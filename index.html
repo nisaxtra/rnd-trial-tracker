@@ -1312,6 +1312,51 @@
             currentTrial.steps[stepIdx].parameters[paramIdx].stdValue = val;
         }
 
+        function addParameterToRoutingStep(stepIdx) {
+            const nameInput = document.getElementById(`new_param_name_${stepIdx}`);
+            const stdInput = document.getElementById(`new_param_std_${stepIdx}`);
+            if (!nameInput) return;
+
+            const paramName = nameInput.value.trim();
+            const stdVal = stdInput ? stdInput.value.trim() : "";
+
+            if (!paramName) {
+                showToast("Ketik nama parameter terlebih dahulu!", "error");
+                nameInput.focus();
+                return;
+            }
+
+            const step = currentTrial.steps[stepIdx];
+            if (!step) return;
+
+            // Sisipkan parameter mesin baru sebelum kelompok hasil uji kain wajib (Lebar, g/yd, gsm, Density)
+            const firstFabricIdx = step.parameters.findIndex(p => p.category === "fabric_outcome");
+            const newParamObj = {
+                name: paramName,
+                category: "machine",
+                stdValue: stdVal,
+                actualValue: "",
+                isNA: false
+            };
+
+            if (firstFabricIdx !== -1) {
+                step.parameters.splice(firstFabricIdx, 0, newParamObj);
+            } else {
+                step.parameters.push(newParamObj);
+            }
+
+            renderRoutingList();
+            showToast(`Parameter "${paramName}" ditambahkan ke ${step.name}.`, "success");
+        }
+
+        function removeParameterFromRoutingStep(stepIdx, paramIdx) {
+            const step = currentTrial.steps[stepIdx];
+            if (!step || !step.parameters[paramIdx]) return;
+            const removed = step.parameters.splice(paramIdx, 1)[0];
+            renderRoutingList();
+            showToast(`Parameter "${removed.name}" dihapus.`, "info");
+        }
+
         function renderRoutingList() {
             const container = document.getElementById("routingListContainer");
             const countEl = document.getElementById("routingCount");
@@ -1341,15 +1386,38 @@
                     ? `<div class="text-xs text-purple-700 bg-purple-50 p-2.5 rounded-lg border border-purple-200">
                            Tahap ini akan menampilkan pilihan tombol <strong>OK</strong> atau <strong>FAILED</strong> beserta kolom Note QC.
                        </div>`
-                    : `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                           ${step.parameters.map((p, pIdx) => `
-                               <div class="flex items-center justify-between gap-2 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200/70">
-                                   <span class="text-xs text-slate-700 font-medium truncate" title="${p.name}">${p.name}</span>
-                                   <input type="text" value="${p.stdValue || ""}" placeholder="STD..."
-                                       onchange="updateRoutingStdValue(${sIdx}, ${pIdx}, this.value)"
-                                       class="w-20 px-2 py-1 text-xs rounded border border-slate-300 bg-white font-mono-code focus:ring-1 focus:ring-emerald-500 outline-none">
-                               </div>
-                           `).join("")}
+                    : `<div class="space-y-3">
+                           <div class="flex flex-col sm:flex-row gap-2 bg-sky-50/80 p-2.5 rounded-xl border border-sky-200/80">
+                               <input type="text" id="new_param_name_${sIdx}" placeholder="Nama parameter baru (misal: Tekanan Roller / pH)..."
+                                   onkeydown="if(event.key==='Enter'){event.preventDefault(); addParameterToRoutingStep(${sIdx});}"
+                                   class="flex-1 px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 bg-white focus:ring-1 focus:ring-emerald-500 outline-none">
+                               <input type="text" id="new_param_std_${sIdx}" placeholder="STD (opsional)"
+                                   onkeydown="if(event.key==='Enter'){event.preventDefault(); addParameterToRoutingStep(${sIdx});}"
+                                   class="sm:w-28 px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 bg-white font-mono-code focus:ring-1 focus:ring-emerald-500 outline-none">
+                               <button type="button" onclick="addParameterToRoutingStep(${sIdx})"
+                                   class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold flex items-center justify-center gap-1 whitespace-nowrap">
+                                   <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                   <span>Tambah Parameter</span>
+                               </button>
+                           </div>
+                           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                               ${step.parameters.map((p, pIdx) => {
+                                   const isMandatoryFabric = p.category === "fabric_outcome";
+                                   return `
+                                       <div class="flex items-center justify-between gap-1.5 ${isMandatoryFabric ? "bg-sky-50/60 border-sky-200" : "bg-slate-50 border-slate-200/70"} px-2.5 py-1.5 rounded-lg border">
+                                           <span class="text-xs text-slate-700 font-medium truncate flex-1" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</span>
+                                           <input type="text" value="${escapeHtml(p.stdValue || "")}" placeholder="STD..."
+                                               onchange="updateRoutingStdValue(${sIdx}, ${pIdx}, this.value)"
+                                               class="w-16 px-2 py-1 text-xs rounded border border-slate-300 bg-white font-mono-code focus:ring-1 focus:ring-emerald-500 outline-none">
+                                           ${!isMandatoryFabric ? `
+                                               <button type="button" onclick="removeParameterFromRoutingStep(${sIdx}, ${pIdx})" class="text-slate-400 hover:text-rose-600 p-0.5" title="Hapus parameter ini">
+                                                   <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                                               </button>
+                                           ` : ""}
+                                       </div>
+                                   `;
+                               }).join("")}
+                           </div>
                        </div>`;
 
                 return `
@@ -1377,9 +1445,9 @@
                             </div>
                         </div>
 
-                        <details class="mt-2.5 pt-2.5 border-t border-slate-100">
+                        <details open class="mt-2.5 pt-2.5 border-t border-slate-100">
                             <summary class="text-xs font-semibold text-sky-700 cursor-pointer hover:underline select-none">
-                                ${isQc ? "Lihat Detail Format QC" : "+ Set Nilai STD Kartu (Opsional)"}
+                                ${isQc ? "Detail Format QC" : "Atur Parameter Mesin & Nilai STD Kartu"}
                             </summary>
                             <div class="mt-2.5">${stdInputsHtml}</div>
                         </details>
