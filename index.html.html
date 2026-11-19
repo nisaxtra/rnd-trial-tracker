@@ -1,0 +1,2058 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>R&D Trial Process Tracker</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+    <!-- SheetJS (XLSX) untuk export Excel yang rapi bagi R&D -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+        .font-mono-code {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+        }
+        .active-step-badge {
+            animation: pulse-ring 2s infinite;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- ======================================================================= -->
+    <!-- LOCK SCREEN / LOGIN GATE WAJIB (DIVALIDASI SERVER-SIDE APPS SCRIPT)     -->
+    <!-- ======================================================================= -->
+    <div id="loginGate" class="fixed inset-0 z-50 bg-slate-900 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-200">
+            <div class="flex flex-col items-center text-center mb-6">
+                <div class="w-14 h-14 bg-emerald-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-600/30 mb-4">
+                    <i data-lucide="shield-check" class="w-8 h-8 text-white"></i>
+                </div>
+                <h1 class="text-xl font-extrabold text-slate-900">R&D Trial Process Tracker</h1>
+                <p class="text-xs text-slate-500 mt-1">Akses Terbatas • Sistem Pencatatan Parameter Lapangan</p>
+            </div>
+
+            <form onsubmit="handleLoginSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Password Akses Sistem
+                    </label>
+                    <input type="password" id="loginPasswordInput" required autofocus
+                        placeholder="Masukkan password lapangan / R&D..."
+                        class="w-full px-4 py-3.5 rounded-xl border border-slate-300 text-center font-mono-code text-lg tracking-widest focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                    <p id="loginErrorMsg" class="hidden text-xs text-rose-600 font-semibold mt-2 text-center">
+                        Password salah atau ditolak server!
+                    </p>
+                </div>
+
+                <button type="submit" id="loginSubmitBtn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+                    <i data-lucide="log-in" class="w-5 h-5"></i>
+                    <span>Buka Sistem Trial</span>
+                </button>
+            </form>
+
+            <div class="mt-5 pt-4 border-t border-slate-100 text-center">
+                <p class="text-[11px] text-slate-400">
+                    Database tersinkronisasi aman dengan server R&D.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-slate-900 text-white sticky top-0 z-30 shadow-md">
+        <div class="max-w-5xl mx-auto px-4 py-3.5 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3 cursor-pointer" onclick="goToDashboard()">
+                <div class="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                    <i data-lucide="clipboard-check" class="w-6 h-6 text-white"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="font-bold text-base sm:text-lg tracking-tight leading-tight">R&D Trial Tracker</h1>
+                        <span id="roleBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-emerald-400 border border-emerald-500/30 uppercase">
+                            AKSES
+                        </span>
+                    </div>
+                    <p id="cloudSyncStatus" class="text-xs text-slate-400 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
+                        <span>Cloud Sync Aktif</span>
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <!-- Tombol Kembali ke Halaman Awal (Dashboard) -->
+                <button type="button" id="navDashboardBtn" onclick="goToDashboard()" class="hidden px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
+                    <i data-lucide="layout-grid" class="w-4 h-4 text-sky-400"></i>
+                    <span>Dashboard</span>
+                </button>
+
+                <!-- Tombol Sync Cloud Manual -->
+                <button type="button" onclick="syncAllFromCloud(true)" id="syncNowBtn" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition flex items-center gap-1.5" title="Tarik data terbaru dari semua HP">
+                    <i data-lucide="refresh-cw" class="w-4 h-4 text-sky-400"></i>
+                    <span class="hidden sm:inline">Refresh</span>
+                </button>
+
+                <!-- Tombol Export Excel Khusus R&D -->
+                <button type="button" onclick="openModal('exportModal')" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white shadow-sm transition flex items-center gap-1.5">
+                    <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">Export Excel (R&D)</span>
+                    <span class="sm:hidden">Excel</span>
+                </button>
+
+                <!-- Tombol Kunci / Logout -->
+                <button type="button" onclick="logoutSession()" class="p-2 rounded-xl bg-slate-800 hover:bg-rose-900/60 text-slate-400 hover:text-rose-300 border border-slate-700 transition" title="Kunci Layar / Keluar">
+                    <i data-lucide="lock" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Stepper Progress Bar (Hanya muncul saat masuk ke form/timeline trial) -->
+        <div id="stepperBar" class="hidden bg-slate-800/80 border-t border-slate-700/70">
+            <div class="max-w-5xl mx-auto px-4 py-2.5 flex items-center justify-between text-xs sm:text-sm overflow-x-auto gap-2">
+                <button type="button" id="stepNav1" onclick="tryNavigateStep(1)" class="flex items-center gap-2 font-semibold text-emerald-400 whitespace-nowrap">
+                    <span id="stepBadge1" class="w-6 h-6 rounded-full bg-emerald-500 text-slate-950 font-bold flex items-center justify-center text-xs">1</span>
+                    <span>Identitas</span>
+                </button>
+                <div class="h-0.5 flex-1 bg-slate-700 min-w-[20px]"></div>
+                <button type="button" id="stepNav2" onclick="tryNavigateStep(2)" class="flex items-center gap-2 font-medium text-slate-400 whitespace-nowrap">
+                    <span id="stepBadge2" class="w-6 h-6 rounded-full bg-slate-700 text-slate-300 font-bold flex items-center justify-center text-xs">2</span>
+                    <span>Routing Proses</span>
+                </button>
+                <div class="h-0.5 flex-1 bg-slate-700 min-w-[20px]"></div>
+                <button type="button" id="stepNav3" onclick="tryNavigateStep(3)" class="flex items-center gap-2 font-medium text-slate-400 whitespace-nowrap">
+                    <span id="stepBadge3" class="w-6 h-6 rounded-full bg-slate-700 text-slate-300 font-bold flex items-center justify-center text-xs">3</span>
+                    <span>Timeline Lapangan</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Toast Notification Banner -->
+    <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-5xl w-full mx-auto px-4 py-6 sm:py-8">
+
+        <!-- =================================================================== -->
+        <!-- HALAMAN AWAL: DASHBOARD MONITORING TRIAL (FILTER & PENCARIAN)       -->
+        <!-- =================================================================== -->
+        <section id="step0Section" class="space-y-6">
+            <!-- Header Dashboard & Tombol Buat Baru -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-lg sm:text-xl font-extrabold text-slate-900">Monitoring Trial Lapangan</h2>
+                    <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Pilih kartu trial di bawah untuk melanjutkan input mesin, atau buat order trial baru.</p>
+                </div>
+                <button type="button" onclick="createNewTrial()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-5 py-3 rounded-xl shadow-md shadow-emerald-600/20 transition flex items-center justify-center gap-2 whitespace-nowrap">
+                    <i data-lucide="plus-circle" class="w-5 h-5"></i>
+                    <span>Buat Trial Baru</span>
+                </button>
+            </div>
+
+            <!-- Kartu Ringkasan Status yang Bisa Diklik (Filter Tab) -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                <!-- Filter: Belum Selesai / Berjalan -->
+                <button type="button" id="filterCardRunning" onclick="setDashboardFilter('running')" class="text-left p-4 sm:p-5 rounded-2xl border-2 border-amber-500 bg-amber-50/70 shadow-sm transition flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-wider text-amber-700">Sedang Berjalan</p>
+                        <p id="statRunningCount" class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">0</p>
+                        <p class="text-[11px] text-amber-800 mt-1">Klik untuk lihat yang belum selesai</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-600 flex items-center justify-center">
+                        <i data-lucide="clock" class="w-6 h-6"></i>
+                    </div>
+                </button>
+
+                <!-- Filter: Sudah Selesai -->
+                <button type="button" id="filterCardCompleted" onclick="setDashboardFilter('completed')" class="text-left p-4 sm:p-5 rounded-2xl border border-slate-200 bg-white hover:border-emerald-400 shadow-sm transition flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-wider text-emerald-700">Sudah Selesai</p>
+                        <p id="statCompletedCount" class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">0</p>
+                        <p class="text-[11px] text-slate-500 mt-1">Klik untuk lihat riwayat selesai</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-2xl bg-emerald-500/15 text-emerald-600 flex items-center justify-center">
+                        <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+                    </div>
+                </button>
+
+                <!-- Filter: Semua Trial -->
+                <button type="button" id="filterCardAll" onclick="setDashboardFilter('all')" class="text-left p-4 sm:p-5 rounded-2xl border border-slate-200 bg-white hover:border-slate-400 shadow-sm transition flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-wider text-slate-600">Semua Data Trial</p>
+                        <p id="statAllCount" class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">0</p>
+                        <p class="text-[11px] text-slate-500 mt-1">Tampilkan seluruh order trial</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center">
+                        <i data-lucide="layers" class="w-6 h-6"></i>
+                    </div>
+                </button>
+            </div>
+
+            <!-- Kolom Pencarian (SO, PRO, Nama Chop, Item) -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+                <div class="relative flex items-center">
+                    <i data-lucide="search" class="w-5 h-5 text-slate-400 absolute left-3.5 pointer-events-none"></i>
+                    <input type="text" id="dashboardSearchInput" oninput="renderDashboard()"
+                        placeholder="Cari berdasarkan No. SO, No. PRO, Nama Chop / Greige, atau Kode Item..."
+                        class="w-full pl-11 pr-10 py-3 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                    <button type="button" id="clearSearchBtn" onclick="clearDashboardSearch()" class="hidden absolute right-3 text-slate-400 hover:text-slate-600 p-1">
+                        <i data-lucide="x-circle" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Daftar Kartu Trial -->
+            <div id="dashboardTrialsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- TAHAP 1: IDENTITAS TRIAL (WAJIB DIISI DI AWAL)                      -->
+        <!-- =================================================================== -->
+        <section id="step1Section" class="hidden space-y-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-5 sm:p-6 border-b border-slate-100 bg-slate-50/70 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 mb-2">
+                            <i data-lucide="lock" class="w-3.5 h-3.5"></i> Tahap 1 • Wajib Diisi Sebelum Routing
+                        </span>
+                        <h2 class="text-lg sm:text-xl font-bold text-slate-900">Identitas Order & Kartu Trial</h2>
+                        <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Lengkapi data SO, PRO, Item, dan Chop agar seluruh proses tercatat valid.</p>
+                    </div>
+                    <button type="button" onclick="fillDemoIdentity()" class="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-200/70 hover:bg-slate-200 text-slate-700 transition flex items-center gap-1.5">
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-600"></i>
+                        <span>Isi Contoh Data Trial</span>
+                    </button>
+                </div>
+
+                <form id="identityForm" onsubmit="saveIdentityAndNext(event)" class="p-5 sm:p-6 space-y-5">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Tanggal Trial <span class="text-rose-500">*</span></label>
+                            <input type="date" id="id_date" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Kode Item <span class="text-rose-500">*</span></label>
+                            <input type="text" id="id_item" required placeholder="Contoh: RJS-2526-210SN26533" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono-code focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Colour / Warna <span class="text-rose-500">*</span></label>
+                            <input type="text" id="id_colour" required placeholder="Contoh: C#STONE" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">No. SO <span class="text-rose-500">*</span></label>
+                            <input type="text" id="id_so" required placeholder="Contoh: 2140014746" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono-code focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">No. PRO <span class="text-rose-500">*</span></label>
+                            <input type="text" id="id_pro" required placeholder="Contoh: 310027375 | 310027376" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono-code focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Nama PIC / Inisiator <span class="text-rose-500">*</span></label>
+                            <input type="text" id="id_pic" required placeholder="Nama R&D / Leader Lapangan" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Chop No / Nama Chop <span class="text-rose-500">*</span></label>
+                            <input type="text" id="id_chop" required placeholder="Contoh: CH-8892 atau -" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Chop Greige <span class="text-rose-500">*</span></label>
+                            <input type="text" id="id_chop_greige" required placeholder="Contoh: GR-4410 atau -" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Kartu STD Pembanding</label>
+                            <input type="text" id="id_std_ref" placeholder="Contoh: 310027209 (Opsional)" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono-code focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Tujuan Trial / Keterangan Test <span class="text-rose-500">*</span></label>
+                        <textarea id="id_purpose" rows="2" required placeholder="Contoh: Test 3x ke-1. Dyestuff Yellow/Red/Blue ACE; sampel weight reduction 3 pcs" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"></textarea>
+                    </div>
+
+                    <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
+                        <button type="button" onclick="goToDashboard()" class="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-50">
+                            Batal
+                        </button>
+                        <button type="submit" class="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white font-semibold px-6 py-3 rounded-xl shadow-sm transition flex items-center justify-center gap-2">
+                            <span>Simpan Identitas & Lanjut ke Routing</span>
+                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- TAHAP 2: PENYUSUNAN ALUR PROSES (ROUTING)                           -->
+        <!-- =================================================================== -->
+        <section id="step2Section" class="hidden space-y-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-5 sm:p-6 border-b border-slate-100 bg-slate-50/70 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-100 text-sky-800 mb-2">
+                            <i data-lucide="git-commit" class="w-3.5 h-3.5"></i> Tahap 2 • Susun Urutan Mesin & QC
+                        </span>
+                        <h2 class="text-lg sm:text-xl font-bold text-slate-900">Alur Proses (Routing) Trial</h2>
+                        <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Pilih proses sesuai kartu kerja. Setiap proses otomatis memiliki input hasil lebar, g/yd, gsm, & density (serta OK/Failed untuk QC).</p>
+                    </div>
+                    <button type="button" onclick="loadFullStandardRouting()" class="text-xs font-semibold px-3 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 transition flex items-center gap-1.5">
+                        <i data-lucide="list-checks" class="w-4 h-4"></i>
+                        <span>Gunakan Routing Standar Lengkap</span>
+                    </button>
+                </div>
+
+                <div class="p-5 sm:p-6 space-y-6">
+                    <!-- Tambah Proses -->
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Tambah Tahapan Proses ke Alur:</label>
+                        <div class="flex flex-wrap gap-2" id="presetProcessButtons"></div>
+
+                        <!-- Custom Process Input -->
+                        <div class="pt-2 flex flex-col sm:flex-row gap-2">
+                            <input type="text" id="customProcessName" placeholder="Atau ketik proses lain (misal: PEACHING / COMPACTING)..." class="flex-1 px-3.5 py-2 rounded-xl border border-slate-300 text-sm bg-white focus:ring-2 focus:ring-emerald-500 outline-none">
+                            <button type="button" onclick="addCustomProcessToRouting()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5">
+                                <i data-lucide="plus" class="w-4 h-4"></i>
+                                <span>Tambah Proses Custom</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Daftar Urutan Routing -->
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-bold text-slate-800">Urutan Eksekusi di Lapangan (<span id="routingCount">0</span> Tahap)</h3>
+                            <button type="button" onclick="clearRouting()" class="text-xs text-rose-600 hover:underline font-medium">Reset Urutan</button>
+                        </div>
+                        <div id="routingListContainer" class="space-y-2.5"></div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                        <button type="button" onclick="goToStep(1)" class="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-50">
+                            Kembali
+                        </button>
+                        <button type="button" onclick="lockRoutingAndStartField()" class="flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+                            <i data-lucide="play-circle" class="w-5 h-5"></i>
+                            <span>Kunci Routing & Mulai Eksekusi Lapangan</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- TAHAP 3: TIMELINE EKSEKUSI LAPANGAN (STEP-BY-STEP GATEKEEPING)      -->
+        <!-- =================================================================== -->
+        <section id="step3Section" class="hidden space-y-6">
+            <!-- Header Ringkasan Trial -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="space-y-1">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span id="trialOverallBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
+                            PROSES LAPANGAN BERJALAN
+                        </span>
+                        <span id="summaryDate" class="text-xs text-slate-500 font-mono-code"></span>
+                        <span class="text-xs text-slate-400">•</span>
+                        <span id="summaryPurpose" class="text-xs font-medium text-slate-600"></span>
+                    </div>
+                    <h2 class="text-lg sm:text-xl font-extrabold text-slate-900 flex flex-wrap items-center gap-2">
+                        <span id="summaryItem"></span>
+                        <span class="text-slate-300">|</span>
+                        <span id="summaryColour" class="text-emerald-700"></span>
+                    </h2>
+                    <p class="text-xs text-slate-600 font-mono-code">
+                        SO: <strong id="summarySO"></strong> &nbsp;•&nbsp; PRO: <strong id="summaryPRO"></strong> &nbsp;•&nbsp; Chop: <span id="summaryChop"></span>
+                    </p>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 min-w-[210px]">
+                    <div class="flex items-center justify-between text-xs font-bold mb-1.5">
+                        <span class="text-slate-600">Progress Trial</span>
+                        <span id="progressText" class="text-emerald-700">0/0 Selesai</span>
+                    </div>
+                    <div class="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                        <div id="progressBarFill" class="h-full bg-emerald-500 transition-all duration-500 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vertical Timeline Container -->
+            <div id="timelineContainer" class="relative space-y-4"></div>
+        </section>
+
+    </main>
+
+    <!-- ======================================================================= -->
+    <!-- MODAL: EXPORT EXCEL KHUSUS R&D (VERIFIKASI SERVER-SIDE)                 -->
+    <!-- ======================================================================= -->
+    <div id="exportModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden">
+            <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                        <i data-lucide="shield-check" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-900 text-base">Otorisasi Export Excel R&D</h3>
+                        <p class="text-xs text-slate-500">Diverifikasi oleh Server R&D</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeModal('exportModal')" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form onsubmit="verifyAndExportExcel(event)" class="p-5 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Pilih Cakupan Data</label>
+                    <select id="exportScope" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm bg-white focus:ring-2 focus:ring-emerald-500 outline-none">
+                        <option value="current">Trial yang Sedang Dibuka (<span id="exportCurrentLabel">-</span>)</option>
+                        <option value="all">Semua Riwayat Trial Tersimpan (<span id="exportAllCount">0</span> Trial)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Password R&D <span class="text-rose-500">*</span></label>
+                    <input type="password" id="rndPasswordInput" required placeholder="Masukkan password R&D..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono-code focus:ring-2 focus:ring-emerald-500 outline-none">
+                    <p id="passwordErrorMsg" class="hidden text-xs text-rose-600 font-semibold mt-1.5">Password R&D salah! Akses ditolak server.</p>
+                </div>
+
+                <div class="pt-2 flex items-center justify-end gap-2">
+                    <button type="button" onclick="closeModal('exportModal')" class="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100">Batal</button>
+                    <button type="submit" id="exportSubmitBtn" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-sm flex items-center gap-2">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        <span>Download .XLSX</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- JAVASCRIPT LOGIC                                                        -->
+    <!-- ======================================================================= -->
+    <script>
+        // =========================================================================
+        // KONFIGURASI BACKEND GOOGLE APPS SCRIPT (TERPASANG PERMANEN)
+        // =========================================================================
+        const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxztffi4mqbRxhbFqWIBcFuUjopMnKjXTnNptclCWzwEkkodXqSuxVhYGbFYztXk00/exec";
+
+        // 4 Hasil Uji Kain Wajib yang selalu muncul di setiap proses produksi
+        const MANDATORY_FABRIC_OUTCOMES = [
+            "Hasil Lebar / Width (inch)",
+            "Hasil Berat (g/yd)",
+            "Hasil Weight (gsm)",
+            "Hasil Density (Pick x End)"
+        ];
+
+        // Master Parameter Sesuai Excel Summary_Hasil_Test + Routing QC Inspect & QC Lab
+        const STANDARD_PROCESSES = [
+            {
+                name: "UNROLLING",
+                defaultMachine: "Unrolling",
+                type: "production",
+                parameters: [
+                    "Width Greige (inch)",
+                    "Density Greige (Pick)",
+                    "Qtty / Batch (yrd)",
+                    "Berat Kain Awal (g/y)",
+                    "Berat Total Kain (kg)",
+                    "Susut (%)"
+                ]
+            },
+            {
+                name: "BOIL OFF",
+                defaultMachine: "BOIL OFF",
+                type: "production",
+                parameters: [
+                    "Speed (m/menit)",
+                    "Temp Bak 1 (°C)",
+                    "Temp Bak 2 (°C)",
+                    "Temp Bak 3 (°C)",
+                    "Temp Bak 4 (°C)",
+                    "pH Larutan"
+                ]
+            },
+            {
+                name: "RELAXING",
+                defaultMachine: "Jet Relax",
+                type: "production",
+                parameters: [
+                    "Mesin",
+                    "Temp (°C)",
+                    "PGM",
+                    "Liquor Ratio",
+                    "Jumlah Air (liter)",
+                    "No Nozzle",
+                    "Main Pump (Hz)",
+                    "Speed (m/mnt)",
+                    "RPM",
+                    "Cycle (Sec) Tube 1",
+                    "Cycle (Sec) Tube 2",
+                    "Torq (%)",
+                    "Chemical"
+                ]
+            },
+            {
+                name: "HYDROEXTRACTOR / SCUTCHER",
+                defaultMachine: "Hydro / Scutcher",
+                type: "production",
+                parameters: [
+                    "Speed / RPM",
+                    "Tekanan Padder"
+                ]
+            },
+            {
+                name: "PRE-SET",
+                defaultMachine: "STENTER",
+                type: "production",
+                parameters: [
+                    "Temp (°C)",
+                    "Speed (m/mnt)",
+                    "Weight (kg)",
+                    "Overfeed (%)",
+                    "Feed in (%)",
+                    "Pinning (%)",
+                    "Press Padder (N/m2)",
+                    "Up wind",
+                    "Down wind",
+                    "RPM"
+                ]
+            },
+            {
+                name: "WEIGHT REDUCTION",
+                defaultMachine: "Hisaka WR",
+                type: "production",
+                parameters: [
+                    "Mesin",
+                    "Berat awal (g/y)",
+                    "Berat akhir (g/y)",
+                    "Reduksi berat (%)",
+                    "Target reduksi (%)",
+                    "Reduksi sesuai target?"
+                ]
+            },
+            {
+                name: "DYEING",
+                defaultMachine: "KUNYUNG",
+                type: "production",
+                parameters: [
+                    "Temp (°C)",
+                    "PGM",
+                    "Liquor Ratio",
+                    "Jumlah Air (liter)",
+                    "pH larutan",
+                    "No Nozzle",
+                    "Main Pump (Hz)",
+                    "Speed (m/mnt)",
+                    "Cycle (Sec) Tube 1",
+                    "Cycle (Sec) Tube 2",
+                    "Torq (%)",
+                    "Dyestuff & Resep (%)"
+                ]
+            },
+            {
+                name: "SET 2",
+                defaultMachine: "STENTER",
+                type: "production",
+                parameters: [
+                    "Temp (°C)",
+                    "Speed (m/mnt)",
+                    "Panjang (Yrd)",
+                    "Overfeed (%)",
+                    "Feed in (%)",
+                    "Pinning (%)",
+                    "Press Padder (N/m2)",
+                    "Up wind",
+                    "Down wind",
+                    "RPM",
+                    "pH Larutan",
+                    "WPU (%)",
+                    "Chemical (%)"
+                ]
+            },
+            {
+                name: "FINAL SET",
+                defaultMachine: "STENTER (Mc 1/2/3/5)",
+                type: "production",
+                parameters: [
+                    "Temp (°C)",
+                    "Speed (m/mnt)",
+                    "Panjang (Yrd)",
+                    "Overfeed (%)",
+                    "Feed in (%)",
+                    "Pinning (%)",
+                    "Press Padder (N/m2)",
+                    "Up wind",
+                    "Down wind",
+                    "RPM",
+                    "pH Larutan",
+                    "WPU (%)",
+                    "Chemical (%)",
+                    "Tebal (mm)",
+                    "Selisih gsm vs std"
+                ]
+            },
+            {
+                name: "QC INSPECT",
+                defaultMachine: "QC Inspection",
+                type: "qc",
+                parameters: []
+            },
+            {
+                name: "QC LAB",
+                defaultMachine: "QC Laboratory",
+                type: "qc",
+                parameters: []
+            }
+        ];
+
+        const STORAGE_KEY_TRIALS = "rnd_trial_tracker_records_v3";
+        const STORAGE_KEY_SESSION_PWD = "rnd_trial_session_pwd_v3";
+        const STORAGE_KEY_SESSION_ROLE = "rnd_trial_session_role_v3";
+
+        let allTrials = [];
+        let currentTrial = null;
+        let currentStep = 0; // 0: Dashboard, 1: Identitas, 2: Routing, 3: Timeline
+        let dashboardFilter = "running"; // 'running' | 'completed' | 'all'
+        let sessionPassword = "";
+        let userRole = null; // 'RND' | 'OPERATOR'
+
+        // Helper aman untuk render icon Lucide
+        function refreshIcons() {
+            if (typeof lucide !== "undefined" && lucide.createIcons) {
+                lucide.createIcons();
+            }
+        }
+
+        // -------------------------------------------------------------
+        // 1. INISIALISASI & LOGIN GATE SERVER-SIDE
+        // -------------------------------------------------------------
+        window.onload = async function () {
+            refreshIcons();
+            const savedTrials = localStorage.getItem(STORAGE_KEY_TRIALS);
+            if (savedTrials) {
+                try { allTrials = JSON.parse(savedTrials); } catch (e) { allTrials = []; }
+            }
+
+            renderPresetButtons();
+            document.getElementById("id_date").valueAsDate = new Date();
+
+            const savedPwd = sessionStorage.getItem(STORAGE_KEY_SESSION_PWD);
+            const savedRole = sessionStorage.getItem(STORAGE_KEY_SESSION_ROLE);
+
+            if (savedPwd && savedRole) {
+                sessionPassword = savedPwd;
+                userRole = savedRole;
+                unlockAppUI();
+                await syncAllFromCloud(false);
+            }
+        };
+
+        async function callBackendApi(payloadObj) {
+            const response = await fetch(APPS_SCRIPT_URL, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify(payloadObj)
+            });
+            return await response.json();
+        }
+
+        async function handleLoginSubmit(e) {
+            e.preventDefault();
+            const pwdInput = document.getElementById("loginPasswordInput");
+            const errorEl = document.getElementById("loginErrorMsg");
+            const submitBtn = document.getElementById("loginSubmitBtn");
+            const rawPwd = pwdInput.value.trim();
+
+            if (!rawPwd) return;
+            errorEl.classList.add("hidden");
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i><span>Memverifikasi ke Server...</span>`;
+            refreshIcons();
+
+            try {
+                const res = await callBackendApi({
+                    action: "login",
+                    password: rawPwd
+                });
+
+                if (res && res.ok) {
+                    sessionPassword = rawPwd;
+                    userRole = res.role;
+                    sessionStorage.setItem(STORAGE_KEY_SESSION_PWD, sessionPassword);
+                    sessionStorage.setItem(STORAGE_KEY_SESSION_ROLE, userRole);
+
+                    if (Array.isArray(res.trials)) {
+                        allTrials = res.trials;
+                        localStorage.setItem(STORAGE_KEY_TRIALS, JSON.stringify(allTrials));
+                    }
+
+                    pwdInput.value = "";
+                    unlockAppUI();
+                    showToast(`Login berhasil (${userRole === "RND" ? "Akses Penuh R&D" : "Operator Lapangan"})`, "success");
+                } else {
+                    errorEl.textContent = (res && res.message) ? res.message : "Password tidak valid!";
+                    errorEl.classList.remove("hidden");
+                    pwdInput.focus();
+                }
+            } catch (err) {
+                errorEl.textContent = "Gagal terhubung ke server Google Sheets. Periksa koneksi internet.";
+                errorEl.classList.remove("hidden");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<i data-lucide="log-in" class="w-5 h-5"></i><span>Buka Sistem Trial</span>`;
+                refreshIcons();
+            }
+        }
+
+        function unlockAppUI() {
+            document.getElementById("loginGate").classList.add("hidden");
+            const roleBadge = document.getElementById("roleBadge");
+            if (userRole === "RND") {
+                roleBadge.textContent = "TIM R&D";
+                roleBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase";
+            } else {
+                roleBadge.textContent = "LAPANGAN";
+                roleBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 uppercase";
+            }
+            goToDashboard();
+        }
+
+        function logoutSession() {
+            sessionStorage.removeItem(STORAGE_KEY_SESSION_PWD);
+            sessionStorage.removeItem(STORAGE_KEY_SESSION_ROLE);
+            sessionPassword = "";
+            userRole = null;
+            document.getElementById("loginGate").classList.remove("hidden");
+            document.getElementById("loginPasswordInput").focus();
+        }
+
+        // -------------------------------------------------------------
+        // 2. CLOUD SYNC (GOOGLE SHEETS)
+        // -------------------------------------------------------------
+        function setSyncIndicator(state, text) {
+            const el = document.getElementById("cloudSyncStatus");
+            if (!el) return;
+            let dotColor = "bg-emerald-400";
+            if (state === "syncing") dotColor = "bg-amber-400 animate-ping";
+            if (state === "error") dotColor = "bg-rose-400";
+            el.innerHTML = `<span class="w-2 h-2 rounded-full ${dotColor} inline-block"></span><span>${text}</span>`;
+        }
+
+        async function syncAllFromCloud(showNotification = true) {
+            if (!sessionPassword) return;
+            const btn = document.getElementById("syncNowBtn");
+            if (btn) btn.classList.add("opacity-60", "pointer-events-none");
+            setSyncIndicator("syncing", "Menyinkronkan data...");
+
+            try {
+                const res = await callBackendApi({
+                    action: "getTrials",
+                    password: sessionPassword
+                });
+
+                if (res && res.ok && Array.isArray(res.trials)) {
+                    allTrials = res.trials;
+                    localStorage.setItem(STORAGE_KEY_TRIALS, JSON.stringify(allTrials));
+
+                    if (currentTrial) {
+                        const updated = allTrials.find(t => t.id === currentTrial.id);
+                        if (updated) {
+                            currentTrial = updated;
+                            if (currentStep === 3) renderTimeline();
+                        }
+                    }
+                    if (currentStep === 0) renderDashboard();
+                    setSyncIndicator("ok", "Tersinkronisasi (Semua HP)");
+                    if (showNotification) showToast("Data terbaru berhasil ditarik dari server!", "success");
+                } else {
+                    setSyncIndicator("error", "Gagal verifikasi sync");
+                }
+            } catch (err) {
+                setSyncIndicator("error", "Offline (Mode Lokal)");
+                if (showNotification) showToast("Gagal terhubung ke server, memakai cache lokal.", "error");
+            } finally {
+                if (btn) btn.classList.remove("opacity-60", "pointer-events-none");
+            }
+        }
+
+        async function syncFullStateToCloud() {
+            if (!sessionPassword) return;
+            setSyncIndicator("syncing", "Menyimpan ke server...");
+            try {
+                const res = await callBackendApi({
+                    action: "syncState",
+                    password: sessionPassword,
+                    allTrialsJson: JSON.stringify(allTrials)
+                });
+                if (res && res.ok) {
+                    setSyncIndicator("ok", "Tersinkronisasi (Semua HP)");
+                } else {
+                    setSyncIndicator("error", "Gagal simpan ke server");
+                }
+            } catch (err) {
+                setSyncIndicator("error", "Gagal kirim ke server");
+            }
+        }
+
+        // -------------------------------------------------------------
+        // 3. HALAMAN AWAL: DASHBOARD MONITORING & PENCARIAN
+        // -------------------------------------------------------------
+        function goToDashboard() {
+            currentStep = 0;
+            currentTrial = null;
+            document.getElementById("step0Section").classList.remove("hidden");
+            document.getElementById("step1Section").classList.add("hidden");
+            document.getElementById("step2Section").classList.add("hidden");
+            document.getElementById("step3Section").classList.add("hidden");
+            document.getElementById("stepperBar").classList.add("hidden");
+            document.getElementById("navDashboardBtn").classList.add("hidden");
+            renderDashboard();
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+
+        function setDashboardFilter(filter) {
+            dashboardFilter = filter;
+            const cards = {
+                running: document.getElementById("filterCardRunning"),
+                completed: document.getElementById("filterCardCompleted"),
+                all: document.getElementById("filterCardAll")
+            };
+
+            cards.running.className = filter === "running"
+                ? "text-left p-4 sm:p-5 rounded-2xl border-2 border-amber-500 bg-amber-50/70 shadow-sm transition flex items-center justify-between"
+                : "text-left p-4 sm:p-5 rounded-2xl border border-slate-200 bg-white hover:border-amber-400 shadow-sm transition flex items-center justify-between";
+
+            cards.completed.className = filter === "completed"
+                ? "text-left p-4 sm:p-5 rounded-2xl border-2 border-emerald-500 bg-emerald-50/70 shadow-sm transition flex items-center justify-between"
+                : "text-left p-4 sm:p-5 rounded-2xl border border-slate-200 bg-white hover:border-emerald-400 shadow-sm transition flex items-center justify-between";
+
+            cards.all.className = filter === "all"
+                ? "text-left p-4 sm:p-5 rounded-2xl border-2 border-slate-700 bg-slate-100/80 shadow-sm transition flex items-center justify-between"
+                : "text-left p-4 sm:p-5 rounded-2xl border border-slate-200 bg-white hover:border-slate-400 shadow-sm transition flex items-center justify-between";
+
+            renderDashboard();
+        }
+
+        function clearDashboardSearch() {
+            document.getElementById("dashboardSearchInput").value = "";
+            renderDashboard();
+        }
+
+        function isTrialCompleted(trial) {
+            if (!trial || !trial.routingLocked || !trial.steps || trial.steps.length === 0) return false;
+            return trial.steps.every(s => s.status === "completed");
+        }
+
+        function renderDashboard() {
+            const runningCount = allTrials.filter(t => !isTrialCompleted(t)).length;
+            const completedCount = allTrials.filter(t => isTrialCompleted(t)).length;
+
+            document.getElementById("statRunningCount").textContent = runningCount;
+            document.getElementById("statCompletedCount").textContent = completedCount;
+            document.getElementById("statAllCount").textContent = allTrials.length;
+
+            const searchInput = document.getElementById("dashboardSearchInput");
+            const clearBtn = document.getElementById("clearSearchBtn");
+            const query = (searchInput.value || "").trim().toLowerCase();
+
+            if (query) {
+                clearBtn.classList.remove("hidden");
+            } else {
+                clearBtn.classList.add("hidden");
+            }
+
+            const filtered = allTrials.filter(t => {
+                const completed = isTrialCompleted(t);
+                if (dashboardFilter === "running" && completed) return false;
+                if (dashboardFilter === "completed" && !completed) return false;
+
+                if (query) {
+                    const id = t.identity || {};
+                    const haystack = [
+                        id.so || "",
+                        id.pro || "",
+                        id.chop || "",
+                        id.chopGreige || "",
+                        id.item || "",
+                        id.colour || ""
+                    ].join(" ").toLowerCase();
+                    if (!haystack.includes(query)) return false;
+                }
+                return true;
+            });
+
+            const grid = document.getElementById("dashboardTrialsGrid");
+            if (filtered.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center">
+                        <i data-lucide="folder-search" class="w-10 h-10 text-slate-300 mx-auto mb-2"></i>
+                        <p class="text-sm font-bold text-slate-700">Tidak ada data trial yang cocok</p>
+                        <p class="text-xs text-slate-500 mt-1">Coba ubah filter status di atas, bersihkan pencarian, atau buat trial baru.</p>
+                    </div>
+                `;
+                refreshIcons();
+                return;
+            }
+
+            grid.innerHTML = filtered.map(trial => {
+                const completed = isTrialCompleted(trial);
+                const totalSteps = trial.steps.length;
+                const doneSteps = trial.steps.filter(s => s.status === "completed").length;
+                const pct = totalSteps > 0 ? Math.round((doneSteps / totalSteps) * 100) : 0;
+                const activeStep = trial.steps.find(s => s.status === "active");
+
+                let statusBadge = "";
+                let nextInfo = "";
+                if (!trial.routingLocked) {
+                    statusBadge = `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-100 text-sky-800">DRAFT ROUTING</span>`;
+                    nextInfo = `Menunggu penyusunan routing mesin`;
+                } else if (completed) {
+                    statusBadge = `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">SELESAI 100%</span>`;
+                    nextInfo = `Seluruh ${totalSteps} tahapan selesai`;
+                } else {
+                    statusBadge = `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800">BERJALAN (${doneSteps}/${totalSteps})</span>`;
+                    nextInfo = activeStep ? `Giliran: <strong>${activeStep.name}</strong>` : `Menunggu proses`;
+                }
+
+                const deleteBtnHtml = userRole === "RND"
+                    ? `<button type="button" onclick="event.stopPropagation(); deleteTrial('${trial.id}')" class="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition" title="Hapus Trial (Khusus R&D)">
+                           <i data-lucide="trash-2" class="w-4 h-4"></i>
+                       </button>`
+                    : "";
+
+                return `
+                    <div onclick="switchToTrial('${trial.id}')" class="cursor-pointer bg-white rounded-2xl border ${completed ? "border-emerald-200 hover:border-emerald-400" : "border-slate-200 hover:border-amber-400"} p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between gap-4">
+                        <div>
+                            <div class="flex items-start justify-between gap-2 mb-2">
+                                <div class="flex flex-wrap items-center gap-1.5">
+                                    ${statusBadge}
+                                    <span class="text-xs font-mono-code text-slate-400">${trial.identity.date || "-"}</span>
+                                </div>
+                                ${deleteBtnHtml}
+                            </div>
+
+                            <h3 class="font-extrabold text-slate-900 text-base sm:text-lg leading-snug">
+                                ${trial.identity.item} <span class="text-emerald-700 font-bold">• ${trial.identity.colour}</span>
+                            </h3>
+
+                            <div class="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100 font-mono-code">
+                                <div><span class="text-slate-400">SO:</span> <strong>${trial.identity.so}</strong></div>
+                                <div><span class="text-slate-400">PRO:</span> <strong>${trial.identity.pro}</strong></div>
+                                <div class="col-span-2 truncate"><span class="text-slate-400">Chop:</span> <strong>${trial.identity.chop || "-"}</strong> / Greige: <strong>${trial.identity.chopGreige || "-"}</strong></div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                                <div class="h-full ${completed ? "bg-emerald-500" : "bg-amber-500"} rounded-full" style="width: ${pct}%"></div>
+                            </div>
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="text-slate-600">${nextInfo}</span>
+                                <span class="font-bold text-slate-900 flex items-center gap-1">
+                                    <span>${completed ? "Lihat Detail" : "Lanjutkan"}</span>
+                                    <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+
+            refreshIcons();
+        }
+
+        // -------------------------------------------------------------
+        // 4. NAVIGASI STEP 1 - 3 & MANAJEMEN TRIAL
+        // -------------------------------------------------------------
+        function createNewTrial() {
+            currentTrial = {
+                id: "TRIAL-" + Date.now(),
+                createdAt: new Date().toISOString(),
+                identityCompleted: false,
+                routingLocked: false,
+                identity: {
+                    date: new Date().toISOString().split("T")[0],
+                    item: "",
+                    colour: "",
+                    so: "",
+                    pro: "",
+                    pic: "",
+                    chop: "",
+                    chopGreige: "",
+                    stdRef: "",
+                    purpose: ""
+                },
+                steps: []
+            };
+            populateIdentityForm();
+            renderRoutingList();
+            goToStep(1);
+        }
+
+        function switchToTrial(trialId) {
+            const found = allTrials.find(t => t.id === trialId);
+            if (!found) return;
+            currentTrial = found;
+            populateIdentityForm();
+            renderRoutingList();
+
+            if (!currentTrial.identityCompleted) {
+                goToStep(1);
+            } else if (!currentTrial.routingLocked) {
+                goToStep(2);
+            } else {
+                goToStep(3);
+            }
+        }
+
+        async function deleteTrial(trialId) {
+            if (userRole !== "RND") {
+                showToast("Hanya akun R&D yang dapat menghapus data trial.", "error");
+                return;
+            }
+            allTrials = allTrials.filter(t => t.id !== trialId);
+            localStorage.setItem(STORAGE_KEY_TRIALS, JSON.stringify(allTrials));
+            await syncFullStateToCloud();
+            renderDashboard();
+            showToast("Data trial dihapus oleh R&D.", "info");
+        }
+
+        function saveCurrentTrialToStorage() {
+            if (!currentTrial) return;
+            const idx = allTrials.findIndex(t => t.id === currentTrial.id);
+            if (idx >= 0) {
+                allTrials[idx] = currentTrial;
+            } else {
+                allTrials.unshift(currentTrial);
+            }
+            localStorage.setItem(STORAGE_KEY_TRIALS, JSON.stringify(allTrials));
+        }
+
+        function tryNavigateStep(targetStep) {
+            if (!currentTrial) {
+                goToDashboard();
+                return;
+            }
+            if (targetStep === 1) {
+                if (currentTrial.routingLocked && userRole !== "RND") {
+                    showToast("Identitas sudah dikunci. Hanya R&D yang bisa mengubah.", "error");
+                    return;
+                }
+                goToStep(1);
+            } else if (targetStep === 2) {
+                if (!currentTrial.identityCompleted) {
+                    showToast("Wajib isi & simpan Identitas (Tahap 1) terlebih dahulu!", "error");
+                    return;
+                }
+                if (currentTrial.routingLocked && userRole !== "RND") {
+                    showToast("Routing sudah dikunci untuk eksekusi lapangan.", "info");
+                    return;
+                }
+                goToStep(2);
+            } else if (targetStep === 3) {
+                if (!currentTrial.identityCompleted) {
+                    showToast("Selesaikan Tahap 1 (Identitas) terlebih dahulu!", "error");
+                    return;
+                }
+                if (!currentTrial.routingLocked || currentTrial.steps.length === 0) {
+                    showToast("Susun & kunci Alur Proses (Tahap 2) terlebih dahulu!", "error");
+                    return;
+                }
+                goToStep(3);
+            }
+        }
+
+        function goToStep(stepNum) {
+            currentStep = stepNum;
+            document.getElementById("step0Section").classList.add("hidden");
+            document.getElementById("step1Section").classList.toggle("hidden", stepNum !== 1);
+            document.getElementById("step2Section").classList.toggle("hidden", stepNum !== 2);
+            document.getElementById("step3Section").classList.toggle("hidden", stepNum !== 3);
+
+            document.getElementById("stepperBar").classList.remove("hidden");
+            document.getElementById("navDashboardBtn").classList.remove("hidden");
+
+            [1, 2, 3].forEach(n => {
+                const nav = document.getElementById("stepNav" + n);
+                const badge = document.getElementById("stepBadge" + n);
+                if (n === stepNum) {
+                    nav.className = "flex items-center gap-2 font-bold text-emerald-400 whitespace-nowrap";
+                    badge.className = "w-6 h-6 rounded-full bg-emerald-500 text-slate-950 font-bold flex items-center justify-center text-xs";
+                } else if (n < stepNum) {
+                    nav.className = "flex items-center gap-2 font-semibold text-slate-200 whitespace-nowrap";
+                    badge.className = "w-6 h-6 rounded-full bg-emerald-600/40 text-emerald-300 font-bold flex items-center justify-center text-xs";
+                } else {
+                    nav.className = "flex items-center gap-2 font-medium text-slate-400 whitespace-nowrap";
+                    badge.className = "w-6 h-6 rounded-full bg-slate-700 text-slate-300 font-bold flex items-center justify-center text-xs";
+                }
+            });
+
+            if (stepNum === 3) {
+                renderTimeline();
+            }
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+
+        // -------------------------------------------------------------
+        // 5. STEP 1: IDENTITAS
+        // -------------------------------------------------------------
+        function populateIdentityForm() {
+            if (!currentTrial) return;
+            const id = currentTrial.identity;
+            document.getElementById("id_date").value = id.date || new Date().toISOString().split("T")[0];
+            document.getElementById("id_item").value = id.item || "";
+            document.getElementById("id_colour").value = id.colour || "";
+            document.getElementById("id_so").value = id.so || "";
+            document.getElementById("id_pro").value = id.pro || "";
+            document.getElementById("id_pic").value = id.pic || "";
+            document.getElementById("id_chop").value = id.chop || "";
+            document.getElementById("id_chop_greige").value = id.chopGreige || "";
+            document.getElementById("id_std_ref").value = id.stdRef || "";
+            document.getElementById("id_purpose").value = id.purpose || "";
+        }
+
+        function fillDemoIdentity() {
+            document.getElementById("id_date").value = new Date().toISOString().split("T")[0];
+            document.getElementById("id_item").value = "RJS-2526-210SN26533";
+            document.getElementById("id_colour").value = "C#STONE";
+            document.getElementById("id_so").value = "2140014746";
+            document.getElementById("id_pro").value = "310027375 | 310027376";
+            document.getElementById("id_pic").value = "Andi (R&D)";
+            document.getElementById("id_chop").value = "CH-8892";
+            document.getElementById("id_chop_greige").value = "GR-4410";
+            document.getElementById("id_std_ref").value = "310027209";
+            document.getElementById("id_purpose").value = "Test 3x ke-1. Dyestuff Yellow/Red/Blue ACE; sampel weight reduction 3 pcs";
+            showToast("Contoh identitas berhasil diisi.", "info");
+        }
+
+        async function saveIdentityAndNext(e) {
+            e.preventDefault();
+            if (!currentTrial) createNewTrial();
+
+            currentTrial.identity = {
+                date: document.getElementById("id_date").value.trim(),
+                item: document.getElementById("id_item").value.trim(),
+                colour: document.getElementById("id_colour").value.trim(),
+                so: document.getElementById("id_so").value.trim(),
+                pro: document.getElementById("id_pro").value.trim(),
+                pic: document.getElementById("id_pic").value.trim(),
+                chop: document.getElementById("id_chop").value.trim(),
+                chopGreige: document.getElementById("id_chop_greige").value.trim(),
+                stdRef: document.getElementById("id_std_ref").value.trim(),
+                purpose: document.getElementById("id_purpose").value.trim()
+            };
+            currentTrial.identityCompleted = true;
+            saveCurrentTrialToStorage();
+            await syncFullStateToCloud();
+
+            showToast("Identitas tersimpan! Silakan susun alur proses (Routing).", "success");
+            goToStep(2);
+        }
+
+        // -------------------------------------------------------------
+        // 6. STEP 2: PENYUSUNAN ROUTING PROSES
+        // -------------------------------------------------------------
+        function renderPresetButtons() {
+            const container = document.getElementById("presetProcessButtons");
+            container.innerHTML = STANDARD_PROCESSES.map((proc, idx) => {
+                const isQc = proc.type === "qc";
+                const btnStyle = isQc
+                    ? "px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-600 hover:text-white text-purple-800 border border-purple-300 text-xs font-bold transition shadow-xs flex items-center gap-1.5"
+                    : "px-3 py-1.5 rounded-xl bg-white hover:bg-emerald-600 hover:text-white text-slate-700 border border-slate-300 text-xs font-semibold transition shadow-xs flex items-center gap-1.5";
+                return `
+                    <button type="button" onclick="addPresetProcess(${idx})" class="${btnStyle}">
+                        <i data-lucide="${isQc ? "check-square" : "plus-circle"}" class="w-3.5 h-3.5"></i>
+                        <span>${proc.name}</span>
+                    </button>
+                `;
+            }).join("");
+            refreshIcons();
+        }
+
+        function buildStepObject(name, defaultMachine, type, machineParams) {
+            const isQc = type === "qc";
+            const allParams = isQc
+                ? []
+                : [
+                    ...machineParams.map(pName => ({
+                        name: pName,
+                        category: "machine",
+                        stdValue: "",
+                        actualValue: "",
+                        isNA: false
+                    })),
+                    ...MANDATORY_FABRIC_OUTCOMES.map(fName => ({
+                        name: fName,
+                        category: "fabric_outcome",
+                        stdValue: "",
+                        actualValue: "",
+                        isNA: false
+                    }))
+                ];
+
+            return {
+                uid: "STEP-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
+                name: name,
+                type: isQc ? "qc" : "production",
+                machine: defaultMachine || name,
+                status: "locked",
+                operatorName: "",
+                completedAt: "",
+                notes: "",
+                qcResult: "", // "OK" atau "FAILED" khusus proses QC
+                parameters: allParams
+            };
+        }
+
+        function addPresetProcess(presetIdx) {
+            const template = STANDARD_PROCESSES[presetIdx];
+            if (!template) return;
+            currentTrial.steps.push(
+                buildStepObject(template.name, template.defaultMachine, template.type, template.parameters)
+            );
+            renderRoutingList();
+        }
+
+        function addCustomProcessToRouting() {
+            const input = document.getElementById("customProcessName");
+            const rawName = input.value.trim().toUpperCase();
+            if (!rawName) {
+                showToast("Ketik nama proses custom terlebih dahulu.", "error");
+                return;
+            }
+            currentTrial.steps.push(
+                buildStepObject(rawName, rawName, "production", ["Temp (°C)", "Speed (m/mnt)", "Chemical / Tekanan"])
+            );
+            input.value = "";
+            renderRoutingList();
+        }
+
+        function loadFullStandardRouting() {
+            currentTrial.steps = STANDARD_PROCESSES.map(template =>
+                buildStepObject(template.name, template.defaultMachine, template.type, template.parameters)
+            );
+            renderRoutingList();
+            showToast("Seluruh alur standar (Unrolling s/d Final Set + QC) ditambahkan.", "success");
+        }
+
+        function moveRoutingStep(index, direction) {
+            const target = index + direction;
+            if (target < 0 || target >= currentTrial.steps.length) return;
+            const temp = currentTrial.steps[index];
+            currentTrial.steps[index] = currentTrial.steps[target];
+            currentTrial.steps[target] = temp;
+            renderRoutingList();
+        }
+
+        function removeRoutingStep(index) {
+            currentTrial.steps.splice(index, 1);
+            renderRoutingList();
+        }
+
+        function clearRouting() {
+            currentTrial.steps = [];
+            renderRoutingList();
+        }
+
+        function updateRoutingStdValue(stepIdx, paramIdx, val) {
+            currentTrial.steps[stepIdx].parameters[paramIdx].stdValue = val;
+        }
+
+        function renderRoutingList() {
+            const container = document.getElementById("routingListContainer");
+            const countEl = document.getElementById("routingCount");
+            if (!currentTrial) return;
+
+            countEl.textContent = currentTrial.steps.length;
+
+            if (currentTrial.steps.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 px-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400">
+                        <i data-lucide="route" class="w-8 h-8 mx-auto mb-2 opacity-60"></i>
+                        <p class="text-sm font-medium text-slate-600">Belum ada alur proses dipilih</p>
+                        <p class="text-xs mt-1">Klik tombol proses di atas untuk menyusun urutan mesin & QC.</p>
+                    </div>
+                `;
+                refreshIcons();
+                return;
+            }
+
+            container.innerHTML = currentTrial.steps.map((step, sIdx) => {
+                const isQc = step.type === "qc";
+                const subtitle = isQc
+                    ? "Isian Khusus QC: Keputusan OK / FAILED & Catatan"
+                    : `${step.parameters.length} Parameter (Termasuk Hasil Lebar, g/yd, gsm, & Density)`;
+
+                const stdInputsHtml = isQc
+                    ? `<div class="text-xs text-purple-700 bg-purple-50 p-2.5 rounded-lg border border-purple-200">
+                           Tahap ini akan menampilkan pilihan tombol <strong>OK</strong> atau <strong>FAILED</strong> beserta kolom Note QC.
+                       </div>`
+                    : `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                           ${step.parameters.map((p, pIdx) => `
+                               <div class="flex items-center justify-between gap-2 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200/70">
+                                   <span class="text-xs text-slate-700 font-medium truncate" title="${p.name}">${p.name}</span>
+                                   <input type="text" value="${p.stdValue || ""}" placeholder="STD..."
+                                       onchange="updateRoutingStdValue(${sIdx}, ${pIdx}, this.value)"
+                                       class="w-20 px-2 py-1 text-xs rounded border border-slate-300 bg-white font-mono-code focus:ring-1 focus:ring-emerald-500 outline-none">
+                               </div>
+                           `).join("")}
+                       </div>`;
+
+                return `
+                    <div class="bg-white border ${isQc ? "border-purple-200" : "border-slate-200"} rounded-xl p-3.5 shadow-2xs">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-3">
+                                <span class="w-7 h-7 rounded-lg ${isQc ? "bg-purple-700" : "bg-slate-900"} text-white font-bold text-xs flex items-center justify-center shrink-0">
+                                    ${sIdx + 1}
+                                </span>
+                                <div>
+                                    <h4 class="font-bold text-sm text-slate-900">${step.name}</h4>
+                                    <p class="text-xs text-slate-500">${subtitle}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <button type="button" onclick="moveRoutingStep(${sIdx}, -1)" ${sIdx === 0 ? "disabled" : ""} class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 disabled:opacity-30" title="Geser Naik">
+                                    <i data-lucide="chevron-up" class="w-4 h-4"></i>
+                                </button>
+                                <button type="button" onclick="moveRoutingStep(${sIdx}, 1)" ${sIdx === currentTrial.steps.length - 1 ? "disabled" : ""} class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 disabled:opacity-30" title="Geser Turun">
+                                    <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                                </button>
+                                <button type="button" onclick="removeRoutingStep(${sIdx})" class="p-1.5 rounded-lg hover:bg-rose-50 text-rose-600 ml-1" title="Hapus">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <details class="mt-2.5 pt-2.5 border-t border-slate-100">
+                            <summary class="text-xs font-semibold text-sky-700 cursor-pointer hover:underline select-none">
+                                ${isQc ? "Lihat Detail Format QC" : "+ Set Nilai STD Kartu (Opsional)"}
+                            </summary>
+                            <div class="mt-2.5">${stdInputsHtml}</div>
+                        </details>
+                    </div>
+                `;
+            }).join("");
+
+            refreshIcons();
+        }
+
+        async function lockRoutingAndStartField() {
+            if (!currentTrial || currentTrial.steps.length === 0) {
+                showToast("Pilih minimal 1 proses dalam alur routing!", "error");
+                return;
+            }
+            currentTrial.routingLocked = true;
+            currentTrial.steps.forEach((step, idx) => {
+                step.status = idx === 0 ? "active" : "locked";
+            });
+            saveCurrentTrialToStorage();
+            await syncFullStateToCloud();
+
+            goToStep(3);
+            showToast("Alur routing dikunci & tersinkronisasi! Silakan mulai dari proses #1.", "success");
+        }
+
+        // -------------------------------------------------------------
+        // 7. STEP 3: TIMELINE EKSEKUSI LAPANGAN
+        // -------------------------------------------------------------
+        function renderTimeline() {
+            if (!currentTrial) return;
+
+            const id = currentTrial.identity;
+            document.getElementById("summaryDate").textContent = id.date;
+            document.getElementById("summaryPurpose").textContent = id.purpose;
+            document.getElementById("summaryItem").textContent = id.item;
+            document.getElementById("summaryColour").textContent = id.colour;
+            document.getElementById("summarySO").textContent = id.so;
+            document.getElementById("summaryPRO").textContent = id.pro;
+            document.getElementById("summaryChop").textContent = `${id.chop || "-"} / Greige: ${id.chopGreige || "-"}`;
+
+            const total = currentTrial.steps.length;
+            const completedCount = currentTrial.steps.filter(s => s.status === "completed").length;
+            const pct = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+
+            document.getElementById("progressText").textContent = `${completedCount}/${total} Proses Selesai (${pct}%)`;
+            document.getElementById("progressBarFill").style.width = `${pct}%`;
+
+            const overallBadge = document.getElementById("trialOverallBadge");
+            if (completedCount === total && total > 0) {
+                overallBadge.className = "px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800";
+                overallBadge.textContent = "SELURUH PROSES TRIAL SELESAI";
+            } else {
+                overallBadge.className = "px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800";
+                overallBadge.textContent = "PROSES LAPANGAN BERJALAN";
+            }
+
+            const container = document.getElementById("timelineContainer");
+            container.innerHTML = currentTrial.steps.map((step, sIdx) => {
+                const isLast = sIdx === total - 1;
+                const connector = !isLast
+                    ? `<div class="hidden sm:block absolute left-6 top-14 bottom-[-16px] w-0.5 ${step.status === "completed" ? "bg-emerald-400" : "bg-slate-200"}"></div>`
+                    : "";
+
+                if (step.status === "completed") {
+                    return renderCompletedStepCard(step, sIdx, connector);
+                } else if (step.status === "active") {
+                    return renderActiveStepCard(step, sIdx, connector);
+                } else {
+                    return renderLockedStepCard(step, sIdx, connector);
+                }
+            }).join("");
+
+            refreshIcons();
+        }
+
+        function renderCompletedStepCard(step, sIdx, connector) {
+            const isQc = step.type === "qc";
+            let bodySummaryHtml = "";
+
+            if (isQc) {
+                const badgeColor = step.qcResult === "OK"
+                    ? "bg-emerald-600 text-white"
+                    : "bg-rose-600 text-white";
+                bodySummaryHtml = `
+                    <div class="flex flex-wrap items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200/80">
+                        <span class="px-3 py-1 rounded-lg text-xs font-extrabold ${badgeColor}">
+                            HASIL QC: ${step.qcResult || "-"}
+                        </span>
+                        <span class="text-xs text-slate-700">
+                            <strong>Note QC:</strong> ${step.notes || "-"}
+                        </span>
+                    </div>
+                `;
+            } else {
+                const filledBadges = step.parameters.map(p => {
+                    const val = p.isNA ? "N/A" : p.actualValue;
+                    const highlight = p.category === "fabric_outcome"
+                        ? "bg-sky-50 border-sky-200 text-sky-900"
+                        : "bg-slate-50 border-slate-200/80 text-slate-800";
+                    return `
+                        <div class="${highlight} px-2.5 py-1.5 rounded-lg border text-xs">
+                            <span class="text-slate-500 block text-[10px]">${p.name}</span>
+                            <span class="font-bold font-mono-code">${val}</span>
+                        </div>
+                    `;
+                }).join("");
+                bodySummaryHtml = `
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                        ${filledBadges}
+                    </div>
+                    ${step.notes ? `<p class="mt-2.5 text-xs text-slate-600 bg-amber-50/70 px-3 py-2 rounded-lg border border-amber-200/60"><strong>Catatan Lapangan:</strong> ${step.notes}</p>` : ""}
+                `;
+            }
+
+            const editButtonHtml = userRole === "RND"
+                ? `<button type="button" onclick="reopenCompletedStep(${sIdx})" class="text-xs font-semibold text-slate-500 hover:text-slate-800 underline">
+                       Edit Data (R&D)
+                   </button>`
+                : "";
+
+            return `
+                <div class="relative sm:pl-14">
+                    ${connector}
+                    <div class="hidden sm:flex absolute left-1.5 top-3 w-9 h-9 rounded-full bg-emerald-600 text-white font-bold items-center justify-center shadow-sm z-10">
+                        <i data-lucide="check" class="w-5 h-5"></i>
+                    </div>
+
+                    <div class="bg-white rounded-2xl border border-emerald-200/90 shadow-2xs overflow-hidden">
+                        <div class="px-4 py-3.5 bg-emerald-50/70 border-b border-emerald-100 flex flex-wrap items-center justify-between gap-2">
+                            <div class="flex items-center gap-2.5">
+                                <span class="sm:hidden w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">✓</span>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <h3 class="font-bold text-slate-900 text-sm sm:text-base">${sIdx + 1}. ${step.name}</h3>
+                                        <span class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-600 text-white">SELESAI</span>
+                                    </div>
+                                    <p class="text-xs text-slate-600 mt-0.5">
+                                        Petugas: <strong>${step.operatorName}</strong> • Selesai: <span class="font-mono-code">${step.completedAt}</span>
+                                    </p>
+                                </div>
+                            </div>
+                            ${editButtonHtml}
+                        </div>
+
+                        <div class="p-4">
+                            ${bodySummaryHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function setQcDecision(stepIdx, decision) {
+            const step = currentTrial.steps[stepIdx];
+            if (!step) return;
+            step.qcResult = decision;
+            renderTimeline();
+        }
+
+        function renderActiveStepCard(step, sIdx, connector) {
+            const isQc = step.type === "qc";
+
+            if (isQc) {
+                const isOk = step.qcResult === "OK";
+                const isFailed = step.qcResult === "FAILED";
+                return `
+                    <div class="relative sm:pl-14" id="activeStepCard">
+                        ${connector}
+                        <div class="hidden sm:flex absolute left-1.5 top-4 w-9 h-9 rounded-full bg-purple-600 text-white font-extrabold text-sm items-center justify-center shadow-md active-step-badge z-10">
+                            ${sIdx + 1}
+                        </div>
+
+                        <div class="bg-white rounded-2xl border-2 border-purple-500 shadow-lg overflow-hidden">
+                            <div class="px-4 sm:px-6 py-4 bg-purple-50 border-b border-purple-200/80 flex flex-wrap items-center justify-between gap-2">
+                                <div class="flex items-center gap-3">
+                                    <span class="sm:hidden w-7 h-7 rounded-full bg-purple-600 text-white text-xs font-extrabold flex items-center justify-center">${sIdx + 1}</span>
+                                    <div>
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-purple-600 text-white uppercase tracking-wider mb-1">
+                                            ● Tahap QC Aktif Saat Ini
+                                        </span>
+                                        <h3 class="font-extrabold text-slate-900 text-base sm:text-lg">${sIdx + 1}. ${step.name}</h3>
+                                    </div>
+                                </div>
+                                <span class="text-xs font-semibold text-purple-900 bg-purple-200/60 px-3 py-1 rounded-full">
+                                    Wajib pilih OK / FAILED & isi Note
+                                </span>
+                            </div>
+
+                            <div class="p-4 sm:p-6 space-y-5">
+                                <!-- Pilihan OK atau FAILED -->
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                                        Keputusan Hasil ${step.name} <span class="text-rose-500">*</span>
+                                    </label>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <button type="button" onclick="setQcDecision(${sIdx}, 'OK')"
+                                            class="py-3.5 px-4 rounded-xl border-2 font-extrabold text-sm flex items-center justify-center gap-2 transition ${isOk ? "border-emerald-600 bg-emerald-600 text-white shadow-md" : "border-slate-200 bg-slate-50 text-slate-700 hover:border-emerald-400"}">
+                                            <i data-lucide="check-circle" class="w-5 h-5"></i>
+                                            <span>OK (PASS)</span>
+                                        </button>
+                                        <button type="button" onclick="setQcDecision(${sIdx}, 'FAILED')"
+                                            class="py-3.5 px-4 rounded-xl border-2 font-extrabold text-sm flex items-center justify-center gap-2 transition ${isFailed ? "border-rose-600 bg-rose-600 text-white shadow-md" : "border-slate-200 bg-slate-50 text-slate-700 hover:border-rose-400"}">
+                                            <i data-lucide="x-circle" class="w-5 h-5"></i>
+                                            <span>FAILED (REJECT)</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Note QC & Nama Petugas QC -->
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                                            Note / Catatan Hasil QC <span class="text-rose-500">*</span>
+                                        </label>
+                                        <input type="text" id="notes_input_${sIdx}" value="${step.notes || ""}"
+                                            oninput="updateStepMeta(${sIdx}, 'notes', this.value)"
+                                            placeholder="Contoh: Warna sesuai standar, tidak ada cacat / belang"
+                                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                                            Nama Petugas QC <span class="text-rose-500">*</span>
+                                        </label>
+                                        <input type="text" id="operator_input_${sIdx}" value="${step.operatorName || ""}"
+                                            oninput="updateStepMeta(${sIdx}, 'operatorName', this.value)"
+                                            placeholder="Masukkan nama petugas QC..."
+                                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+                                    </div>
+                                </div>
+
+                                <div class="pt-2">
+                                    <button type="button" id="completeBtn_${sIdx}" onclick="completeProcessStep(${sIdx})"
+                                        class="w-full py-4 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-extrabold text-sm sm:text-base shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-2.5">
+                                        <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+                                        <span>SELESAI ${step.name} & SIMPAN</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Render untuk Proses Produksi (Parameter Mesin + Hasil Uji Kain: Lebar, g/yd, gsm, Density)
+            const machineParams = step.parameters.map((p, idx) => ({ ...p, origIdx: idx })).filter(p => p.category !== "fabric_outcome");
+            const fabricParams = step.parameters.map((p, idx) => ({ ...p, origIdx: idx })).filter(p => p.category === "fabric_outcome");
+
+            const renderParamBox = (p, accentRing) => {
+                const pIdx = p.origIdx;
+                const stdBadge = p.stdValue
+                    ? `<span class="text-[11px] font-mono-code bg-sky-100 text-sky-800 px-2 py-0.5 rounded font-semibold">STD: ${p.stdValue}</span>`
+                    : "";
+                return `
+                    <div class="p-3 rounded-xl border ${p.isNA ? "bg-slate-100 border-slate-200" : "bg-white border-slate-200"} transition">
+                        <div class="flex items-center justify-between gap-2 mb-1.5">
+                            <label class="text-xs font-bold text-slate-800">${p.name} <span class="text-rose-500">*</span></label>
+                            <label class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 cursor-pointer select-none">
+                                <input type="checkbox" ${p.isNA ? "checked" : ""} onchange="toggleParamNA(${sIdx}, ${pIdx}, this.checked)" class="rounded text-emerald-600 focus:ring-0">
+                                <span>N/A</span>
+                            </label>
+                        </div>
+                        ${stdBadge ? `<div class="mb-1.5">${stdBadge}</div>` : ""}
+                        <input type="text"
+                            id="param_input_${sIdx}_${pIdx}"
+                            value="${p.isNA ? "N/A" : (p.actualValue || "")}"
+                            ${p.isNA ? "disabled" : ""}
+                            oninput="updateActualParamValue(${sIdx}, ${pIdx}, this.value)"
+                            placeholder="${p.isNA ? "Tidak diukur (N/A)" : "Isi hasil aktual..."}"
+                            class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm font-mono-code focus:ring-2 ${accentRing} outline-none disabled:bg-slate-200/70 disabled:text-slate-500">
+                    </div>
+                `;
+            };
+
+            return `
+                <div class="relative sm:pl-14" id="activeStepCard">
+                    ${connector}
+                    <div class="hidden sm:flex absolute left-1.5 top-4 w-9 h-9 rounded-full bg-amber-500 text-white font-extrabold text-sm items-center justify-center shadow-md active-step-badge z-10">
+                        ${sIdx + 1}
+                    </div>
+
+                    <div class="bg-white rounded-2xl border-2 border-amber-400 shadow-lg overflow-hidden">
+                        <div class="px-4 sm:px-6 py-4 bg-amber-50 border-b border-amber-200/80 flex flex-wrap items-center justify-between gap-2">
+                            <div class="flex items-center gap-3">
+                                <span class="sm:hidden w-7 h-7 rounded-full bg-amber-500 text-white text-xs font-extrabold flex items-center justify-center">${sIdx + 1}</span>
+                                <div>
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-500 text-white uppercase tracking-wider mb-1">
+                                        ● Proses Aktif Saat Ini
+                                    </span>
+                                    <h3 class="font-extrabold text-slate-900 text-base sm:text-lg">${sIdx + 1}. ${step.name}</h3>
+                                </div>
+                            </div>
+                            <span class="text-xs font-semibold text-amber-900 bg-amber-200/60 px-3 py-1 rounded-full">
+                                Wajib isi parameter & hasil kain
+                            </span>
+                        </div>
+
+                        <div class="p-4 sm:p-6 space-y-6">
+                            <!-- Bagian 1: Parameter Mesin -->
+                            <div>
+                                <h4 class="text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                                    <i data-lucide="sliders" class="w-4 h-4 text-amber-600"></i>
+                                    <span>1. Parameter Kondisi Mesin (${step.name})</span>
+                                </h4>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                                    ${machineParams.map(p => renderParamBox(p, "focus:ring-amber-500 focus:border-amber-500")).join("")}
+                                </div>
+                            </div>
+
+                            <!-- Bagian 2: Hasil Uji Kain (Lebar, g/yd, gsm, Density) -->
+                            <div class="bg-sky-50/70 p-4 rounded-2xl border border-sky-200">
+                                <h4 class="text-xs font-extrabold text-sky-900 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                                    <i data-lucide="ruler" class="w-4 h-4 text-sky-600"></i>
+                                    <span>2. Hasil Uji Kain Setelah ${step.name} (Lebar, g/yd, GSM, Density)</span>
+                                </h4>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                    ${fabricParams.map(p => renderParamBox(p, "focus:ring-sky-500 focus:border-sky-500")).join("")}
+                                </div>
+                            </div>
+
+                            <!-- Catatan Kondisi & Nama Operator -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-100">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Kondisi Kain / Catatan Lapangan</label>
+                                    <input type="text" id="notes_input_${sIdx}" value="${step.notes || ""}"
+                                        oninput="updateStepMeta(${sIdx}, 'notes', this.value)"
+                                        placeholder="Contoh: Kain normal, tidak ada lipatan / belang"
+                                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Operator Pelaksana <span class="text-rose-500">*</span></label>
+                                    <input type="text" id="operator_input_${sIdx}" value="${step.operatorName || ""}"
+                                        oninput="updateStepMeta(${sIdx}, 'operatorName', this.value)"
+                                        placeholder="Masukkan nama operator..."
+                                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                                </div>
+                            </div>
+
+                            <!-- TOMBOL HIJAU SELESAI -->
+                            <div class="pt-2">
+                                <button type="button" id="completeBtn_${sIdx}" onclick="completeProcessStep(${sIdx})"
+                                    class="w-full py-4 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-extrabold text-sm sm:text-base shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-2.5">
+                                    <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+                                    <span>SELESAI PROSES ${step.name} & SIMPAN</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderLockedStepCard(step, sIdx, connector) {
+            return `
+                <div class="relative sm:pl-14 opacity-70">
+                    ${connector}
+                    <div class="hidden sm:flex absolute left-1.5 top-3 w-9 h-9 rounded-full bg-slate-200 text-slate-500 font-bold text-xs items-center justify-center z-10">
+                        <i data-lucide="lock" class="w-4 h-4"></i>
+                    </div>
+                    <div class="bg-slate-50 rounded-2xl border border-slate-200 px-4 py-3.5 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <span class="sm:hidden w-6 h-6 rounded-full bg-slate-200 text-slate-500 text-xs font-bold flex items-center justify-center">${sIdx + 1}</span>
+                            <div>
+                                <h4 class="font-bold text-slate-600 text-sm">${sIdx + 1}. ${step.name}</h4>
+                                <p class="text-xs text-slate-400">Menunggu proses sebelumnya selesai</p>
+                            </div>
+                        </div>
+                        <span class="text-xs font-semibold text-slate-400 bg-slate-200/70 px-2.5 py-1 rounded-lg">Terkunci</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateActualParamValue(stepIndex, paramIndex, val) {
+            currentTrial.steps[stepIndex].parameters[paramIndex].actualValue = val;
+            saveCurrentTrialToStorage();
+        }
+
+        function toggleParamNA(stepIndex, paramIndex, isChecked) {
+            const param = currentTrial.steps[stepIndex].parameters[paramIndex];
+            param.isNA = isChecked;
+            if (isChecked) param.actualValue = "N/A";
+            else if (param.actualValue === "N/A") param.actualValue = "";
+            saveCurrentTrialToStorage();
+            renderTimeline();
+        }
+
+        function updateStepMeta(stepIndex, field, val) {
+            currentTrial.steps[stepIndex][field] = val;
+            saveCurrentTrialToStorage();
+        }
+
+        function reopenCompletedStep(stepIndex) {
+            if (userRole !== "RND") {
+                showToast("Hanya akun R&D yang dapat membuka ulang data proses selesai.", "error");
+                return;
+            }
+            currentTrial.steps.forEach((s, idx) => {
+                if (idx === stepIndex) s.status = "active";
+                else if (idx > stepIndex && s.status !== "completed") s.status = "locked";
+            });
+            saveCurrentTrialToStorage();
+            renderTimeline();
+            showToast(`Mode edit R&D dibuka untuk proses #${stepIndex + 1}.`, "info");
+        }
+
+        async function completeProcessStep(stepIndex) {
+            const step = currentTrial.steps[stepIndex];
+            if (!step) return;
+
+            if (step.type === "qc") {
+                if (!step.qcResult || (step.qcResult !== "OK" && step.qcResult !== "FAILED")) {
+                    showToast(`Wajib pilih keputusan OK atau FAILED untuk ${step.name}!`, "error");
+                    return;
+                }
+                if (!step.notes || step.notes.trim() === "") {
+                    showToast(`Wajib isi Note / Catatan QC terlebih dahulu!`, "error");
+                    const noteInput = document.getElementById(`notes_input_${stepIndex}`);
+                    if (noteInput) noteInput.focus();
+                    return;
+                }
+            } else {
+                const emptyParams = step.parameters.filter(p => !p.isNA && (!p.actualValue || p.actualValue.trim() === ""));
+                if (emptyParams.length > 0) {
+                    showToast(`Masih ada ${emptyParams.length} parameter / hasil kain kosong (contoh: ${emptyParams[0].name}). Isi atau centang N/A!`, "error");
+                    const firstEmptyIdx = step.parameters.findIndex(p => !p.isNA && (!p.actualValue || p.actualValue.trim() === ""));
+                    const inputEl = document.getElementById(`param_input_${stepIndex}_${firstEmptyIdx}`);
+                    if (inputEl) inputEl.focus();
+                    return;
+                }
+            }
+
+            if (!step.operatorName || step.operatorName.trim() === "") {
+                showToast("Wajib isi Nama Operator / Petugas Pelaksana sebelum menyelesaikan proses!", "error");
+                const opInput = document.getElementById(`operator_input_${stepIndex}`);
+                if (opInput) opInput.focus();
+                return;
+            }
+
+            const btn = document.getElementById(`completeBtn_${stepIndex}`);
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i><span>Menyimpan & Sinkronisasi ke Server...</span>`;
+                refreshIcons();
+            }
+
+            const now = new Date();
+            const timestampStr = now.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) +
+                                 " " + now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+
+            step.status = "completed";
+            step.completedAt = timestampStr;
+
+            const nextUncompletedIdx = currentTrial.steps.findIndex((s, idx) => idx > stepIndex && s.status !== "completed");
+            if (nextUncompletedIdx !== -1) {
+                currentTrial.steps[nextUncompletedIdx].status = "active";
+            }
+
+            saveCurrentTrialToStorage();
+            await sendStepLogToGoogleSheets(currentTrial, step, stepIndex + 1);
+            renderTimeline();
+
+            if (nextUncompletedIdx !== -1) {
+                showToast(`Proses ${step.name} SELESAI! Giliran proses #${nextUncompletedIdx + 1} terbuka.`, "success");
+            } else {
+                showToast("SELAMAT! Seluruh tahapan proses trial telah selesai!", "success");
+            }
+        }
+
+        async function sendStepLogToGoogleSheets(trial, step, stepOrder) {
+            if (!sessionPassword) return;
+            setSyncIndicator("syncing", "Mengirim log ke server...");
+
+            const summaryStr = step.type === "qc"
+                ? `HASIL QC: ${step.qcResult} | Note: ${step.notes}`
+                : step.parameters
+                    .map(p => `${p.name}: ${p.isNA ? "N/A" : p.actualValue}${p.stdValue ? " (STD:" + p.stdValue + ")" : ""}`)
+                    .join(" | ");
+
+            const payload = {
+                action: "logStep",
+                password: sessionPassword,
+                allTrialsJson: JSON.stringify(allTrials),
+                stepLog: {
+                    date: trial.identity.date,
+                    item: trial.identity.item,
+                    colour: trial.identity.colour,
+                    so: trial.identity.so,
+                    pro: trial.identity.pro,
+                    chop: trial.identity.chop,
+                    chopGreige: trial.identity.chopGreige,
+                    purpose: trial.identity.purpose,
+                    pic: trial.identity.pic,
+                    stepOrder: stepOrder,
+                    processName: step.name,
+                    operatorName: step.operatorName,
+                    completedAt: step.completedAt,
+                    notes: step.type === "qc" ? `[${step.qcResult}] ${step.notes}` : (step.notes || "-"),
+                    parametersSummary: summaryStr
+                }
+            };
+
+            try {
+                const res = await callBackendApi(payload);
+                if (res && res.ok) {
+                    setSyncIndicator("ok", "Tersinkronisasi (Semua HP)");
+                } else {
+                    setSyncIndicator("error", "Gagal kirim ke server");
+                }
+            } catch (err) {
+                setSyncIndicator("error", "Gagal kirim ke server");
+            }
+        }
+
+        // -------------------------------------------------------------
+        // 8. EXPORT EXCEL KHUSUS R&D (VERIFIKASI PASSWORD SERVER-SIDE)
+        // -------------------------------------------------------------
+        async function verifyAndExportExcel(e) {
+            e.preventDefault();
+            const pwdInput = document.getElementById("rndPasswordInput");
+            const errorMsg = document.getElementById("passwordErrorMsg");
+            const submitBtn = document.getElementById("exportSubmitBtn");
+            const enteredPwd = pwdInput.value.trim();
+
+            if (!enteredPwd) return;
+            errorMsg.classList.add("hidden");
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>Memverifikasi R&D...</span>`;
+            refreshIcons();
+
+            try {
+                const res = await callBackendApi({
+                    action: "verifyRnd",
+                    password: enteredPwd
+                });
+
+                if (!res || !res.ok || res.role !== "RND") {
+                    errorMsg.textContent = (res && res.message) ? res.message : "Password R&D salah! Akses ditolak server.";
+                    errorMsg.classList.remove("hidden");
+                    pwdInput.focus();
+                    return;
+                }
+
+                const scope = document.getElementById("exportScope").value;
+                const trialsToExport = (scope === "current" && currentTrial) ? [currentTrial] : allTrials;
+
+                if (!trialsToExport || trialsToExport.length === 0) {
+                    showToast("Tidak ada data trial untuk di-export.", "error");
+                    closeModal("exportModal");
+                    return;
+                }
+
+                generateExcelWorkbook(trialsToExport);
+                pwdInput.value = "";
+                closeModal("exportModal");
+                showToast("File Excel R&D berhasil diunduh!", "success");
+            } catch (err) {
+                errorMsg.textContent = "Gagal menghubungi server otorisasi R&D.";
+                errorMsg.classList.remove("hidden");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<i data-lucide="download" class="w-4 h-4"></i><span>Download .XLSX</span>`;
+                refreshIcons();
+            }
+        }
+
+        function generateExcelWorkbook(trials) {
+            const wb = XLSX.utils.book_new();
+
+            trials.forEach((trial, tIdx) => {
+                const id = trial.identity;
+                const rows = [
+                    ["HASIL TEST & TRACKING PROSES R&D"],
+                    [],
+                    ["DATE", ":", id.date],
+                    ["ITEM", ":", id.item],
+                    ["CHOP NO", ":", id.chop || "-"],
+                    ["CHOP GREIGE", ":", id.chopGreige || "-"],
+                    ["COLOUR", ":", id.colour],
+                    ["SO", ":", id.so],
+                    ["PRO", ":", id.pro],
+                    ["PIC / INISIATOR", ":", id.pic],
+                    ["TUJUAN", ":", id.purpose],
+                    [],
+                    ["NO", "ALUR PROSES", "MESIN", "PARAMETER / HASIL UJI", "STD (KARTU)", "ACTUAL LAPANGAN", "STATUS", "OPERATOR / QC", "WAKTU SELESAI", "CATATAN / NOTE QC"]
+                ];
+
+                trial.steps.forEach((step, sIdx) => {
+                    if (step.type === "qc") {
+                        rows.push([
+                            sIdx + 1,
+                            step.name,
+                            step.machine || step.name,
+                            "KEPUTUSAN QC",
+                            "OK",
+                            step.qcResult || "-",
+                            step.status.toUpperCase(),
+                            step.operatorName || "-",
+                            step.completedAt || "-",
+                            step.notes || "-"
+                        ]);
+                    } else {
+                        step.parameters.forEach((p, pIdx) => {
+                            rows.push([
+                                pIdx === 0 ? sIdx + 1 : "",
+                                pIdx === 0 ? step.name : "",
+                                pIdx === 0 ? (step.machine || step.name) : "",
+                                p.name,
+                                p.stdValue || "-",
+                                p.isNA ? "N/A" : (p.actualValue || "-"),
+                                pIdx === 0 ? step.status.toUpperCase() : "",
+                                pIdx === 0 ? (step.operatorName || "-") : "",
+                                pIdx === 0 ? (step.completedAt || "-") : "",
+                                pIdx === 0 ? (step.notes || "-") : ""
+                            ]);
+                        });
+                    }
+                });
+
+                const ws = XLSX.utils.aoa_to_sheet(rows);
+                ws["!cols"] = [
+                    { wch: 5 }, { wch: 24 }, { wch: 18 }, { wch: 28 },
+                    { wch: 16 }, { wch: 22 }, { wch: 14 }, { wch: 18 },
+                    { wch: 20 }, { wch: 32 }
+                ];
+
+                const rawSheetName = `${tIdx + 1}_${id.item || "Trial"}`.replace(/[\\\/\?\*\[\]]/g, "_").substring(0, 30);
+                XLSX.utils.book_append_sheet(wb, ws, rawSheetName);
+            });
+
+            const fileName = trials.length === 1
+                ? `Summary_Hasil_Test_${trials[0].identity.item || "Trial"}.xlsx`
+                : `Rekap_Semua_Trial_RND_${new Date().toISOString().split("T")[0]}.xlsx`;
+
+            XLSX.writeFile(wb, fileName);
+        }
+
+        // -------------------------------------------------------------
+        // 9. MODAL & TOAST HELPERS
+        // -------------------------------------------------------------
+        function openModal(id) {
+            if (id === "exportModal") {
+                const exportAllEl = document.getElementById("exportAllCount");
+                const exportCurrEl = document.getElementById("exportCurrentLabel");
+                const exportScopeEl = document.getElementById("exportScope");
+                if (exportAllEl) exportAllEl.textContent = allTrials.length;
+
+                if (currentTrial && currentTrial.identity && currentTrial.identity.item) {
+                    if (exportCurrEl) exportCurrEl.textContent = currentTrial.identity.item;
+                    if (exportScopeEl) exportScopeEl.value = "current";
+                } else {
+                    if (exportCurrEl) exportCurrEl.textContent = "Tidak ada trial aktif";
+                    if (exportScopeEl) exportScopeEl.value = "all";
+                }
+                document.getElementById("passwordErrorMsg").classList.add("hidden");
+                document.getElementById("rndPasswordInput").value = "";
+            }
+            document.getElementById(id).classList.remove("hidden");
+            refreshIcons();
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add("hidden");
+        }
+
+        function showToast(message, type = "info") {
+            const container = document.getElementById("toastContainer");
+            const toast = document.createElement("div");
+
+            let bgClass = "bg-slate-900 text-white border-slate-700";
+            let iconName = "info";
+            if (type === "success") {
+                bgClass = "bg-emerald-700 text-white border-emerald-600";
+                iconName = "check-circle";
+            } else if (type === "error") {
+                bgClass = "bg-rose-700 text-white border-rose-600";
+                iconName = "alert-circle";
+            }
+
+            toast.className = `pointer-events-auto flex items-start gap-2.5 px-4 py-3 rounded-xl border shadow-xl text-xs sm:text-sm font-medium transition-all duration-300 ${bgClass}`;
+            toast.innerHTML = `
+                <i data-lucide="${iconName}" class="w-4 h-4 shrink-0 mt-0.5"></i>
+                <span class="flex-1 leading-snug">${message}</span>
+            `;
+
+            container.appendChild(toast);
+            refreshIcons();
+
+            setTimeout(() => {
+                toast.classList.add("opacity-0", "translate-y-2");
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+    </script>
+</body>
+</html>
