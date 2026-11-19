@@ -34,62 +34,59 @@
             background: #cbd5e1;
             border-radius: 9999px;
         }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-        @keyframes pulse-ring {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5); }
-            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+        @keyframes pulseBorder {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.35); }
+            50% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
         }
         .active-step-badge {
-            animation: pulse-ring 2s infinite;
+            animation: pulseBorder 2.2s infinite;
         }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
 
     <!-- ======================================================================= -->
-    <!-- LOCK SCREEN / LOGIN GATE WAJIB (DIVALIDASI SERVER-SIDE APPS SCRIPT)     -->
+    <!-- LAYAR KUNCI LOGIN WAJIB (DIVERIFIKASI LANGSUNG KE GOOGLE APPS SCRIPT)   -->
     <!-- ======================================================================= -->
-    <div id="loginGate" class="fixed inset-0 z-50 bg-slate-900 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-200">
-            <div class="flex flex-col items-center text-center mb-6">
-                <div class="w-14 h-14 bg-emerald-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-600/30 mb-4">
-                    <i data-lucide="shield-check" class="w-8 h-8 text-white"></i>
+    <div id="authLockScreen" class="fixed inset-0 z-50 bg-slate-950 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl text-white space-y-6">
+            <div class="text-center space-y-2">
+                <div class="w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto shadow-lg">
+                    <i data-lucide="shield-lock" class="w-8 h-8"></i>
                 </div>
-                <h1 class="text-xl font-extrabold text-slate-900">R&D Trial Process Tracker</h1>
-                <p class="text-xs text-slate-500 mt-1">Akses Terbatas • Sistem Pencatatan Parameter Lapangan</p>
+                <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight">R&D Trial Process Tracker</h1>
+                <p class="text-xs sm:text-sm text-slate-400">Masukkan password akses lapangan atau R&D untuk membuka sistem.</p>
             </div>
 
-            <form onsubmit="handleLoginSubmit(event)" class="space-y-4">
+            <form onsubmit="handleAppLogin(event)" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                        Password Akses Sistem
-                    </label>
-                    <input type="password" id="loginPasswordInput" required autofocus
-                        placeholder="Masukkan password lapangan / R&D..."
-                        class="w-full px-4 py-3.5 rounded-xl border border-slate-300 text-center font-mono-code text-lg tracking-widest focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
-                    <p id="loginErrorMsg" class="hidden text-xs text-rose-600 font-semibold mt-2 text-center">
-                        Password salah atau ditolak server!
-                    </p>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Password Akses Sistem</label>
+                    <input type="password" id="appLoginPassword" required autocomplete="off"
+                        placeholder="Masukkan password..."
+                        class="w-full px-4 py-3.5 rounded-2xl bg-slate-950 border border-slate-700 text-white font-mono-code text-base focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
                 </div>
 
-                <button type="submit" id="loginSubmitBtn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl shadow-md transition flex items-center justify-center gap-2">
-                    <i data-lucide="log-in" class="w-5 h-5"></i>
-                    <span>Buka Sistem Trial</span>
+                <div id="loginErrorBox" class="hidden p-3 rounded-xl bg-rose-950/70 border border-rose-700/60 text-rose-300 text-xs flex items-center gap-2">
+                    <i data-lucide="alert-triangle" class="w-4 h-4 shrink-0 text-rose-400"></i>
+                    <span id="loginErrorText">Password salah!</span>
+                </div>
+
+                <button type="submit" id="loginSubmitBtn"
+                    class="w-full py-3.5 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2">
+                    <i data-lucide="log-in" class="w-4 h-4"></i>
+                    <span>Masuk & Sinkronisasi Data</span>
                 </button>
             </form>
 
-            <div class="mt-5 pt-4 border-t border-slate-100 text-center">
-                <p class="text-[11px] text-slate-400">
-                    Database tersinkronisasi aman dengan server R&D.
-                </p>
-            </div>
+            <p class="text-[11px] text-center text-slate-500">
+                Terhubung aman ke server internal R&D • Multi-Device Sync
+            </p>
         </div>
     </div>
 
-    <!-- Top Navigation Bar -->
+    <!-- ======================================================================= -->
+    <!-- TOP NAVIGATION BAR                                                      -->
+    <!-- ======================================================================= -->
     <header class="bg-slate-900 text-white sticky top-0 z-30 shadow-md">
         <div class="max-w-5xl mx-auto px-4 py-3.5 flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-3 cursor-pointer" onclick="goToDashboard()">
@@ -111,33 +108,29 @@
             </div>
 
             <div class="flex items-center gap-2">
-                <!-- Tombol Kembali ke Halaman Awal (Dashboard) -->
                 <button type="button" id="navDashboardBtn" onclick="goToDashboard()" class="hidden px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
                     <i data-lucide="layout-grid" class="w-4 h-4 text-sky-400"></i>
                     <span>Dashboard</span>
                 </button>
 
-                <!-- Tombol Sync Cloud Manual -->
                 <button type="button" onclick="syncAllFromCloud(true)" id="syncNowBtn" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition flex items-center gap-1.5" title="Tarik data terbaru dari semua HP">
                     <i data-lucide="refresh-cw" class="w-4 h-4 text-sky-400"></i>
                     <span class="hidden sm:inline">Refresh</span>
                 </button>
 
-                <!-- Tombol Export Excel Khusus R&D -->
                 <button type="button" onclick="openModal('exportModal')" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white shadow-sm transition flex items-center gap-1.5">
                     <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
                     <span class="hidden sm:inline">Export Excel (R&D)</span>
                     <span class="sm:hidden">Excel</span>
                 </button>
 
-                <!-- Tombol Kunci / Logout -->
                 <button type="button" onclick="logoutSession()" class="p-2 rounded-xl bg-slate-800 hover:bg-rose-900/60 text-slate-400 hover:text-rose-300 border border-slate-700 transition" title="Kunci Layar / Keluar">
                     <i data-lucide="lock" class="w-4 h-4"></i>
                 </button>
             </div>
         </div>
 
-        <!-- Stepper Progress Bar (Hanya muncul saat masuk ke form/timeline trial) -->
+        <!-- Stepper Progress Bar -->
         <div id="stepperBar" class="hidden bg-slate-800/80 border-t border-slate-700/70">
             <div class="max-w-5xl mx-auto px-4 py-2.5 flex items-center justify-between text-xs sm:text-sm overflow-x-auto gap-2">
                 <button type="button" id="stepNav1" onclick="tryNavigateStep(1)" class="flex items-center gap-2 font-semibold text-emerald-400 whitespace-nowrap">
@@ -165,10 +158,9 @@
     <main class="flex-1 max-w-5xl w-full mx-auto px-4 py-6 sm:py-8">
 
         <!-- =================================================================== -->
-        <!-- HALAMAN AWAL: DASHBOARD MONITORING TRIAL (FILTER & PENCARIAN)       -->
+        <!-- HALAMAN AWAL: DASHBOARD MONITORING TRIAL                            -->
         <!-- =================================================================== -->
         <section id="step0Section" class="space-y-6">
-            <!-- Header Dashboard & Tombol Buat Baru -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h2 class="text-lg sm:text-xl font-extrabold text-slate-900">Monitoring Trial Lapangan</h2>
@@ -180,9 +172,8 @@
                 </button>
             </div>
 
-            <!-- Kartu Ringkasan Status yang Bisa Diklik (Filter Tab) -->
+            <!-- Kartu Ringkasan Status -->
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                <!-- Filter: Belum Selesai / Berjalan -->
                 <button type="button" id="filterCardRunning" onclick="setDashboardFilter('running')" class="text-left p-4 sm:p-5 rounded-2xl border-2 border-amber-500 bg-amber-50/70 shadow-sm transition flex items-center justify-between">
                     <div>
                         <p class="text-xs font-bold uppercase tracking-wider text-amber-700">Sedang Berjalan</p>
@@ -194,7 +185,6 @@
                     </div>
                 </button>
 
-                <!-- Filter: Sudah Selesai -->
                 <button type="button" id="filterCardCompleted" onclick="setDashboardFilter('completed')" class="text-left p-4 sm:p-5 rounded-2xl border border-slate-200 bg-white hover:border-emerald-400 shadow-sm transition flex items-center justify-between">
                     <div>
                         <p class="text-xs font-bold uppercase tracking-wider text-emerald-700">Sudah Selesai</p>
@@ -206,7 +196,6 @@
                     </div>
                 </button>
 
-                <!-- Filter: Semua Trial -->
                 <button type="button" id="filterCardAll" onclick="setDashboardFilter('all')" class="text-left p-4 sm:p-5 rounded-2xl border border-slate-200 bg-white hover:border-slate-400 shadow-sm transition flex items-center justify-between">
                     <div>
                         <p class="text-xs font-bold uppercase tracking-wider text-slate-600">Semua Data Trial</p>
@@ -219,7 +208,7 @@
                 </button>
             </div>
 
-            <!-- Kolom Pencarian (SO, PRO, Nama Chop, Item) -->
+            <!-- Kolom Pencarian -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
                 <div class="relative flex items-center">
                     <i data-lucide="search" class="w-5 h-5 text-slate-400 absolute left-3.5 pointer-events-none"></i>
@@ -237,7 +226,7 @@
         </section>
 
         <!-- =================================================================== -->
-        <!-- TAHAP 1: IDENTITAS TRIAL (WAJIB DIISI DI AWAL)                      -->
+        <!-- TAHAP 1: IDENTITAS TRIAL                                            -->
         <!-- =================================================================== -->
         <section id="step1Section" class="hidden space-y-6">
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -333,12 +322,10 @@
                 </div>
 
                 <div class="p-5 sm:p-6 space-y-6">
-                    <!-- Tambah Proses -->
                     <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
                         <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Tambah Tahapan Proses ke Alur:</label>
                         <div class="flex flex-wrap gap-2" id="presetProcessButtons"></div>
 
-                        <!-- Custom Process Input -->
                         <div class="pt-2 flex flex-col sm:flex-row gap-2">
                             <input type="text" id="customProcessName" placeholder="Atau ketik proses lain (misal: PEACHING / COMPACTING)..." class="flex-1 px-3.5 py-2 rounded-xl border border-slate-300 text-sm bg-white focus:ring-2 focus:ring-emerald-500 outline-none">
                             <button type="button" onclick="addCustomProcessToRouting()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5">
@@ -348,7 +335,6 @@
                         </div>
                     </div>
 
-                    <!-- Daftar Urutan Routing -->
                     <div>
                         <div class="flex items-center justify-between mb-3">
                             <h3 class="text-sm font-bold text-slate-800">Urutan Eksekusi di Lapangan (<span id="routingCount">0</span> Tahap)</h3>
@@ -357,7 +343,6 @@
                         <div id="routingListContainer" class="space-y-2.5"></div>
                     </div>
 
-                    <!-- Action Buttons -->
                     <div class="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
                         <button type="button" onclick="goToStep(1)" class="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-50">
                             Kembali
@@ -372,10 +357,9 @@
         </section>
 
         <!-- =================================================================== -->
-        <!-- TAHAP 3: TIMELINE EKSEKUSI LAPANGAN (STEP-BY-STEP GATEKEEPING)      -->
+        <!-- TAHAP 3: TIMELINE EKSEKUSI LAPANGAN                                 -->
         <!-- =================================================================== -->
         <section id="step3Section" class="hidden space-y-6">
-            <!-- Header Ringkasan Trial -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div class="space-y-1">
                     <div class="flex flex-wrap items-center gap-2">
@@ -396,7 +380,6 @@
                     </p>
                 </div>
 
-                <!-- Progress Bar -->
                 <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 min-w-[210px]">
                     <div class="flex items-center justify-between text-xs font-bold mb-1.5">
                         <span class="text-slate-600">Progress Trial</span>
@@ -408,25 +391,24 @@
                 </div>
             </div>
 
-            <!-- Vertical Timeline Container -->
             <div id="timelineContainer" class="relative space-y-4"></div>
         </section>
 
     </main>
 
     <!-- ======================================================================= -->
-    <!-- MODAL: EXPORT EXCEL KHUSUS R&D (VERIFIKASI SERVER-SIDE)                 -->
+    <!-- MODAL: EXPORT EXCEL (SEARCH & PILIH PRO + PASSWORD RND312)              -->
     <!-- ======================================================================= -->
     <div id="exportModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden">
-            <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 max-h-[92vh] flex flex-col">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
                 <div class="flex items-center gap-2.5">
-                    <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
-                        <i data-lucide="shield-check" class="w-5 h-5"></i>
+                    <div class="bg-emerald-100 text-emerald-700 p-2 rounded-xl">
+                        <i data-lucide="file-spreadsheet" class="w-5 h-5"></i>
                     </div>
                     <div>
-                        <h3 class="font-bold text-slate-900 text-base">Otorisasi Export Excel R&D</h3>
-                        <p class="text-xs text-slate-500">Diverifikasi oleh Server R&D</p>
+                        <h3 class="font-bold text-slate-900">Export Laporan Excel (R&D Only)</h3>
+                        <p class="text-xs text-slate-500">Cari & pilih nomor PRO yang ingin di-export</p>
                     </div>
                 </div>
                 <button type="button" onclick="closeModal('exportModal')" class="text-slate-400 hover:text-slate-600 p-1">
@@ -434,29 +416,42 @@
                 </button>
             </div>
 
-            <form onsubmit="verifyAndExportExcel(event)" class="p-5 space-y-4">
+            <div class="py-4 space-y-4 overflow-y-auto pr-1 flex-1">
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Pilih Cakupan Data</label>
-                    <select id="exportScope" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm bg-white focus:ring-2 focus:ring-emerald-500 outline-none">
-                        <option value="current">Trial yang Sedang Dibuka (<span id="exportCurrentLabel">-</span>)</option>
-                        <option value="all">Semua Riwayat Trial Tersimpan (<span id="exportAllCount">0</span> Trial)</option>
-                    </select>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">1. Cari & Pilih PRO untuk Export *</label>
+                        <div class="flex items-center gap-2 text-xs">
+                            <button type="button" onclick="toggleSelectAllExport(true)" class="text-emerald-600 hover:underline font-semibold">Pilih Semua</button>
+                            <span class="text-slate-300">|</span>
+                            <button type="button" onclick="toggleSelectAllExport(false)" class="text-slate-500 hover:underline">Reset</button>
+                        </div>
+                    </div>
+                    <div class="relative mb-2">
+                        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                        <input type="text" id="exportSearchInput" oninput="renderExportTrialList()" placeholder="Ketik No. PRO, No. SO, Kode Item, atau Chop..." class="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none">
+                    </div>
+
+                    <div id="exportTrialList" class="border border-slate-200 rounded-xl max-h-52 overflow-y-auto divide-y divide-slate-100 bg-slate-50"></div>
+                    <p id="exportSelectedSummary" class="text-xs font-semibold text-emerald-700 mt-1.5">0 PRO dipilih untuk export</p>
                 </div>
 
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Password R&D <span class="text-rose-500">*</span></label>
-                    <input type="password" id="rndPasswordInput" required placeholder="Masukkan password R&D..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono-code focus:ring-2 focus:ring-emerald-500 outline-none">
-                    <p id="passwordErrorMsg" class="hidden text-xs text-rose-600 font-semibold mt-1.5">Password R&D salah! Akses ditolak server.</p>
+                <div class="pt-2 border-t border-slate-100">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">2. Password Otorisasi R&D *</label>
+                    <input type="password" id="rndPasswordInput" placeholder="Masukkan password R&D..." class="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" onkeydown="if(event.key==='Enter') verifyAndExportExcel()">
+                    <p id="passwordErrorMsg" class="hidden text-xs text-rose-600 font-medium mt-1.5 flex items-center gap-1">
+                        <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i>
+                        <span>Password salah! Hanya tim R&D yang dapat mengunduh laporan Excel.</span>
+                    </p>
                 </div>
+            </div>
 
-                <div class="pt-2 flex items-center justify-end gap-2">
-                    <button type="button" onclick="closeModal('exportModal')" class="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100">Batal</button>
-                    <button type="submit" id="exportSubmitBtn" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-sm flex items-center gap-2">
-                        <i data-lucide="download" class="w-4 h-4"></i>
-                        <span>Download .XLSX</span>
-                    </button>
-                </div>
-            </form>
+            <div class="pt-3 border-t border-slate-100 flex justify-end gap-2 shrink-0">
+                <button type="button" onclick="closeModal('exportModal')" class="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl">Batal</button>
+                <button type="button" id="btnConfirmExport" onclick="verifyAndExportExcel()" class="px-5 py-2 text-sm font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow flex items-center gap-2">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                    <span>Download .XLSX</span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -469,7 +464,7 @@
         // =========================================================================
         const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxztffi4mqbRxhbFqWIBcFuUjopMnKjXTnNptclCWzwEkkodXqSuxVhYGbFYztXk00/exec";
 
-        // 4 Hasil Uji Kain Wajib yang selalu muncul di setiap proses produksi
+        // 4 Hasil Uji Kain Wajib di setiap proses produksi
         const MANDATORY_FABRIC_OUTCOMES = [
             "Hasil Lebar / Width (inch)",
             "Hasil Berat (g/yd)",
@@ -646,72 +641,91 @@
         let allTrials = [];
         let currentTrial = null;
         let currentStep = 0; // 0: Dashboard, 1: Identitas, 2: Routing, 3: Timeline
-        let dashboardFilter = "running"; // 'running' | 'completed' | 'all'
+        let dashboardFilter = "running";
         let sessionPassword = "";
-        let userRole = null; // 'RND' | 'OPERATOR'
+        let userRole = null;
+        let selectedExportIds = new Set();
 
-        // Helper aman untuk render icon Lucide
         function refreshIcons() {
             if (typeof lucide !== "undefined" && lucide.createIcons) {
                 lucide.createIcons();
             }
         }
 
+        function escapeHtml(str) {
+            return String(str || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;");
+        }
+
         // -------------------------------------------------------------
-        // 1. INISIALISASI & LOGIN GATE SERVER-SIDE
+        // 1. INISIALISASI & AUTENTIKASI SERVER-SIDE
         // -------------------------------------------------------------
-        window.onload = async function () {
+        window.onload = function () {
             refreshIcons();
-            const savedTrials = localStorage.getItem(STORAGE_KEY_TRIALS);
-            if (savedTrials) {
-                try { allTrials = JSON.parse(savedTrials); } catch (e) { allTrials = []; }
-            }
-
             renderPresetButtons();
-            document.getElementById("id_date").valueAsDate = new Date();
+            checkExistingSession();
+        };
 
+        async function callBackendApi(payload) {
+            if (!APPS_SCRIPT_URL) {
+                return { ok: false, message: "URL Apps Script belum dikonfigurasi." };
+            }
+            const response = await fetch(APPS_SCRIPT_URL, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify(payload)
+            });
+            return await response.json();
+        }
+
+        async function checkExistingSession() {
             const savedPwd = sessionStorage.getItem(STORAGE_KEY_SESSION_PWD);
             const savedRole = sessionStorage.getItem(STORAGE_KEY_SESSION_ROLE);
+
+            try {
+                const cached = localStorage.getItem(STORAGE_KEY_TRIALS);
+                if (cached) allTrials = JSON.parse(cached);
+            } catch (e) {
+                allTrials = [];
+            }
 
             if (savedPwd && savedRole) {
                 sessionPassword = savedPwd;
                 userRole = savedRole;
                 unlockAppUI();
                 await syncAllFromCloud(false);
+            } else {
+                document.getElementById("authLockScreen").classList.remove("hidden");
+                setTimeout(() => document.getElementById("appLoginPassword").focus(), 100);
             }
-        };
-
-        async function callBackendApi(payloadObj) {
-            const response = await fetch(APPS_SCRIPT_URL, {
-                method: "POST",
-                headers: { "Content-Type": "text/plain;charset=utf-8" },
-                body: JSON.stringify(payloadObj)
-            });
-            return await response.json();
         }
 
-        async function handleLoginSubmit(e) {
+        async function handleAppLogin(e) {
             e.preventDefault();
-            const pwdInput = document.getElementById("loginPasswordInput");
-            const errorEl = document.getElementById("loginErrorMsg");
-            const submitBtn = document.getElementById("loginSubmitBtn");
-            const rawPwd = pwdInput.value.trim();
+            const pwdInput = document.getElementById("appLoginPassword");
+            const errBox = document.getElementById("loginErrorBox");
+            const errText = document.getElementById("loginErrorText");
+            const btn = document.getElementById("loginSubmitBtn");
+            const enteredPwd = pwdInput.value.trim();
 
-            if (!rawPwd) return;
-            errorEl.classList.add("hidden");
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i><span>Memverifikasi ke Server...</span>`;
+            if (!enteredPwd) return;
+            errBox.classList.add("hidden");
+            btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>Memverifikasi ke Server...</span>`;
             refreshIcons();
 
             try {
                 const res = await callBackendApi({
                     action: "login",
-                    password: rawPwd
+                    password: enteredPwd
                 });
 
                 if (res && res.ok) {
-                    sessionPassword = rawPwd;
-                    userRole = res.role;
+                    sessionPassword = enteredPwd;
+                    userRole = res.role || "OPERATOR";
                     sessionStorage.setItem(STORAGE_KEY_SESSION_PWD, sessionPassword);
                     sessionStorage.setItem(STORAGE_KEY_SESSION_ROLE, userRole);
 
@@ -722,31 +736,31 @@
 
                     pwdInput.value = "";
                     unlockAppUI();
-                    showToast(`Login berhasil (${userRole === "RND" ? "Akses Penuh R&D" : "Operator Lapangan"})`, "success");
+                    showToast(`Berhasil masuk sebagai ${userRole === "RND" ? "Tim R&D (Akses Penuh)" : "Operator Lapangan"}`, "success");
                 } else {
-                    errorEl.textContent = (res && res.message) ? res.message : "Password tidak valid!";
-                    errorEl.classList.remove("hidden");
+                    errText.textContent = (res && res.message) ? res.message : "Password salah! Akses ditolak server.";
+                    errBox.classList.remove("hidden");
                     pwdInput.focus();
                 }
             } catch (err) {
-                errorEl.textContent = "Gagal terhubung ke server Google Sheets. Periksa koneksi internet.";
-                errorEl.classList.remove("hidden");
+                errText.textContent = "Gagal terhubung ke server Google Sheets. Periksa koneksi internet.";
+                errBox.classList.remove("hidden");
             } finally {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = `<i data-lucide="log-in" class="w-5 h-5"></i><span>Buka Sistem Trial</span>`;
+                btn.disabled = false;
+                btn.innerHTML = `<i data-lucide="log-in" class="w-4 h-4"></i><span>Masuk & Sinkronisasi Data</span>`;
                 refreshIcons();
             }
         }
 
         function unlockAppUI() {
-            document.getElementById("loginGate").classList.add("hidden");
+            document.getElementById("authLockScreen").classList.add("hidden");
             const roleBadge = document.getElementById("roleBadge");
             if (userRole === "RND") {
-                roleBadge.textContent = "TIM R&D";
-                roleBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase";
+                roleBadge.textContent = "MODE R&D";
+                roleBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-500/40 uppercase";
             } else {
                 roleBadge.textContent = "LAPANGAN";
-                roleBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 uppercase";
+                roleBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-950 text-amber-400 border border-amber-500/40 uppercase";
             }
             goToDashboard();
         }
@@ -756,27 +770,29 @@
             sessionStorage.removeItem(STORAGE_KEY_SESSION_ROLE);
             sessionPassword = "";
             userRole = null;
-            document.getElementById("loginGate").classList.remove("hidden");
-            document.getElementById("loginPasswordInput").focus();
+            currentTrial = null;
+            document.getElementById("authLockScreen").classList.remove("hidden");
+            document.getElementById("appLoginPassword").focus();
         }
 
         // -------------------------------------------------------------
-        // 2. CLOUD SYNC (GOOGLE SHEETS)
+        // 2. SINKRONISASI CLOUD (MULTI-HP REAL-TIME)
         // -------------------------------------------------------------
         function setSyncIndicator(state, text) {
             const el = document.getElementById("cloudSyncStatus");
             if (!el) return;
-            let dotColor = "bg-emerald-400";
-            if (state === "syncing") dotColor = "bg-amber-400 animate-ping";
-            if (state === "error") dotColor = "bg-rose-400";
-            el.innerHTML = `<span class="w-2 h-2 rounded-full ${dotColor} inline-block"></span><span>${text}</span>`;
+            let dotClass = "bg-emerald-400";
+            if (state === "syncing") dotClass = "bg-sky-400 animate-ping";
+            else if (state === "error") dotClass = "bg-rose-400";
+
+            el.innerHTML = `<span class="w-2 h-2 rounded-full ${dotClass} inline-block"></span><span>${text}</span>`;
         }
 
-        async function syncAllFromCloud(showNotification = true) {
+        async function syncAllFromCloud(manual = false) {
             if (!sessionPassword) return;
             const btn = document.getElementById("syncNowBtn");
-            if (btn) btn.classList.add("opacity-60", "pointer-events-none");
-            setSyncIndicator("syncing", "Menyinkronkan data...");
+            if (btn) btn.classList.add("opacity-70");
+            setSyncIndicator("syncing", "Menyinkronkan...");
 
             try {
                 const res = await callBackendApi({
@@ -787,6 +803,7 @@
                 if (res && res.ok && Array.isArray(res.trials)) {
                     allTrials = res.trials;
                     localStorage.setItem(STORAGE_KEY_TRIALS, JSON.stringify(allTrials));
+                    setSyncIndicator("ok", "Tersinkronisasi (Semua HP)");
 
                     if (currentTrial) {
                         const updated = allTrials.find(t => t.id === currentTrial.id);
@@ -796,16 +813,16 @@
                         }
                     }
                     if (currentStep === 0) renderDashboard();
-                    setSyncIndicator("ok", "Tersinkronisasi (Semua HP)");
-                    if (showNotification) showToast("Data terbaru berhasil ditarik dari server!", "success");
+                    if (manual) showToast("Data terbaru berhasil ditarik dari server!", "success");
                 } else {
-                    setSyncIndicator("error", "Gagal verifikasi sync");
+                    setSyncIndicator("error", "Gagal sinkronisasi");
+                    if (manual) showToast((res && res.message) || "Gagal memuat data terbaru.", "error");
                 }
             } catch (err) {
                 setSyncIndicator("error", "Offline (Mode Lokal)");
-                if (showNotification) showToast("Gagal terhubung ke server, memakai cache lokal.", "error");
+                if (manual) showToast("Koneksi terputus, menampilkan data tersimpan.", "error");
             } finally {
-                if (btn) btn.classList.remove("opacity-60", "pointer-events-none");
+                if (btn) btn.classList.remove("opacity-70");
             }
         }
 
@@ -824,7 +841,7 @@
                     setSyncIndicator("error", "Gagal simpan ke server");
                 }
             } catch (err) {
-                setSyncIndicator("error", "Gagal kirim ke server");
+                setSyncIndicator("error", "Gagal simpan ke server");
             }
         }
 
@@ -841,28 +858,25 @@
             document.getElementById("stepperBar").classList.add("hidden");
             document.getElementById("navDashboardBtn").classList.add("hidden");
             renderDashboard();
-            window.scrollTo({ top: 0, behavior: "smooth" });
         }
 
-        function setDashboardFilter(filter) {
-            dashboardFilter = filter;
+        function setDashboardFilter(filterMode) {
+            dashboardFilter = filterMode;
             const cards = {
-                running: document.getElementById("filterCardRunning"),
-                completed: document.getElementById("filterCardCompleted"),
-                all: document.getElementById("filterCardAll")
+                running: { el: document.getElementById("filterCardRunning"), active: "border-2 border-amber-500 bg-amber-50/70" },
+                completed: { el: document.getElementById("filterCardCompleted"), active: "border-2 border-emerald-500 bg-emerald-50/70" },
+                all: { el: document.getElementById("filterCardAll"), active: "border-2 border-slate-700 bg-slate-100/80" }
             };
 
-            cards.running.className = filter === "running"
-                ? "text-left p-4 sm:p-5 rounded-2xl border-2 border-amber-500 bg-amber-50/70 shadow-sm transition flex items-center justify-between"
-                : "text-left p-4 sm:p-5 rounded-2xl border border-slate-200 bg-white hover:border-amber-400 shadow-sm transition flex items-center justify-between";
-
-            cards.completed.className = filter === "completed"
-                ? "text-left p-4 sm:p-5 rounded-2xl border-2 border-emerald-500 bg-emerald-50/70 shadow-sm transition flex items-center justify-between"
-                : "text-left p-4 sm:p-5 rounded-2xl border border-slate-200 bg-white hover:border-emerald-400 shadow-sm transition flex items-center justify-between";
-
-            cards.all.className = filter === "all"
-                ? "text-left p-4 sm:p-5 rounded-2xl border-2 border-slate-700 bg-slate-100/80 shadow-sm transition flex items-center justify-between"
-                : "text-left p-4 sm:p-5 rounded-2xl border border-slate-200 bg-white hover:border-slate-400 shadow-sm transition flex items-center justify-between";
+            Object.keys(cards).forEach(key => {
+                const item = cards[key];
+                if (!item.el) return;
+                if (key === filterMode) {
+                    item.el.className = `text-left p-4 sm:p-5 rounded-2xl ${item.active} shadow-sm transition flex items-center justify-between`;
+                } else {
+                    item.el.className = "text-left p-4 sm:p-5 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 shadow-sm transition flex items-center justify-between";
+                }
+            });
 
             renderDashboard();
         }
@@ -873,55 +887,47 @@
         }
 
         function isTrialCompleted(trial) {
-            if (!trial || !trial.routingLocked || !trial.steps || trial.steps.length === 0) return false;
-            return trial.steps.every(s => s.status === "completed");
+            return trial.routingLocked && trial.steps.length > 0 && trial.steps.every(s => s.status === "completed");
         }
 
         function renderDashboard() {
-            const runningCount = allTrials.filter(t => !isTrialCompleted(t)).length;
-            const completedCount = allTrials.filter(t => isTrialCompleted(t)).length;
+            const runningList = allTrials.filter(t => !isTrialCompleted(t));
+            const completedList = allTrials.filter(t => isTrialCompleted(t));
 
-            document.getElementById("statRunningCount").textContent = runningCount;
-            document.getElementById("statCompletedCount").textContent = completedCount;
+            document.getElementById("statRunningCount").textContent = runningList.length;
+            document.getElementById("statCompletedCount").textContent = completedList.length;
             document.getElementById("statAllCount").textContent = allTrials.length;
 
             const searchInput = document.getElementById("dashboardSearchInput");
+            const query = (searchInput ? searchInput.value : "").trim().toLowerCase();
             const clearBtn = document.getElementById("clearSearchBtn");
-            const query = (searchInput.value || "").trim().toLowerCase();
+            if (clearBtn) clearBtn.classList.toggle("hidden", query.length === 0);
+
+            let filtered = allTrials;
+            if (dashboardFilter === "running") filtered = runningList;
+            else if (dashboardFilter === "completed") filtered = completedList;
 
             if (query) {
-                clearBtn.classList.remove("hidden");
-            } else {
-                clearBtn.classList.add("hidden");
-            }
-
-            const filtered = allTrials.filter(t => {
-                const completed = isTrialCompleted(t);
-                if (dashboardFilter === "running" && completed) return false;
-                if (dashboardFilter === "completed" && !completed) return false;
-
-                if (query) {
+                filtered = filtered.filter(t => {
                     const id = t.identity || {};
-                    const haystack = [
-                        id.so || "",
-                        id.pro || "",
-                        id.chop || "",
-                        id.chopGreige || "",
-                        id.item || "",
-                        id.colour || ""
-                    ].join(" ").toLowerCase();
-                    if (!haystack.includes(query)) return false;
-                }
-                return true;
-            });
+                    return (
+                        (id.so || "").toLowerCase().includes(query) ||
+                        (id.pro || "").toLowerCase().includes(query) ||
+                        (id.chop || "").toLowerCase().includes(query) ||
+                        (id.chopGreige || "").toLowerCase().includes(query) ||
+                        (id.item || "").toLowerCase().includes(query) ||
+                        (id.colour || "").toLowerCase().includes(query)
+                    );
+                });
+            }
 
             const grid = document.getElementById("dashboardTrialsGrid");
             if (filtered.length === 0) {
                 grid.innerHTML = `
-                    <div class="col-span-full bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center">
-                        <i data-lucide="folder-search" class="w-10 h-10 text-slate-300 mx-auto mb-2"></i>
-                        <p class="text-sm font-bold text-slate-700">Tidak ada data trial yang cocok</p>
-                        <p class="text-xs text-slate-500 mt-1">Coba ubah filter status di atas, bersihkan pencarian, atau buat trial baru.</p>
+                    <div class="col-span-full bg-white rounded-2xl border-2 border-dashed border-slate-200 p-10 text-center text-slate-400">
+                        <i data-lucide="folder-search" class="w-10 h-10 mx-auto mb-2.5 opacity-60"></i>
+                        <p class="text-sm font-bold text-slate-600">Tidak ada data trial ditemukan</p>
+                        <p class="text-xs mt-1">${query ? "Coba ubah kata kunci pencarian SO / PRO / Chop Anda." : "Klik tombol 'Buat Trial Baru' untuk memulai order trial."}</p>
                     </div>
                 `;
                 refreshIcons();
@@ -929,63 +935,77 @@
             }
 
             grid.innerHTML = filtered.map(trial => {
-                const completed = isTrialCompleted(trial);
-                const totalSteps = trial.steps.length;
-                const doneSteps = trial.steps.filter(s => s.status === "completed").length;
-                const pct = totalSteps > 0 ? Math.round((doneSteps / totalSteps) * 100) : 0;
-                const activeStep = trial.steps.find(s => s.status === "active");
+                const id = trial.identity || {};
+                const total = trial.steps.length;
+                const done = trial.steps.filter(s => s.status === "completed").length;
+                const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                const finished = isTrialCompleted(trial);
 
+                const activeStep = trial.steps.find(s => s.status === "active");
                 let statusBadge = "";
-                let nextInfo = "";
-                if (!trial.routingLocked) {
-                    statusBadge = `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-100 text-sky-800">DRAFT ROUTING</span>`;
-                    nextInfo = `Menunggu penyusunan routing mesin`;
-                } else if (completed) {
-                    statusBadge = `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">SELESAI 100%</span>`;
-                    nextInfo = `Seluruh ${totalSteps} tahapan selesai`;
+                let nextLabel = "";
+
+                if (!trial.identityCompleted) {
+                    statusBadge = `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700">DRAFT IDENTITAS</span>`;
+                    nextLabel = "Lanjutkan isi identitas";
+                } else if (!trial.routingLocked) {
+                    statusBadge = `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-100 text-sky-800">SUSUN ROUTING</span>`;
+                    nextLabel = "Atur urutan mesin & QC";
+                } else if (finished) {
+                    statusBadge = `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">SELESAI (100%)</span>`;
+                    nextLabel = "Lihat seluruh hasil test";
                 } else {
-                    statusBadge = `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800">BERJALAN (${doneSteps}/${totalSteps})</span>`;
-                    nextInfo = activeStep ? `Giliran: <strong>${activeStep.name}</strong>` : `Menunggu proses`;
+                    statusBadge = `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800">PROSES BERJALAN</span>`;
+                    nextLabel = activeStep ? `Giliran: ${activeStep.name}` : "Lanjutkan proses";
                 }
 
-                const deleteBtnHtml = userRole === "RND"
-                    ? `<button type="button" onclick="event.stopPropagation(); deleteTrial('${trial.id}')" class="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition" title="Hapus Trial (Khusus R&D)">
+                const deleteBtn = userRole === "RND"
+                    ? `<button type="button" onclick="event.stopPropagation(); deleteTrial('${trial.id}')" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition" title="Hapus Trial (R&D)">
                            <i data-lucide="trash-2" class="w-4 h-4"></i>
                        </button>`
                     : "";
 
                 return `
-                    <div onclick="switchToTrial('${trial.id}')" class="cursor-pointer bg-white rounded-2xl border ${completed ? "border-emerald-200 hover:border-emerald-400" : "border-slate-200 hover:border-amber-400"} p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between gap-4">
-                        <div>
-                            <div class="flex items-start justify-between gap-2 mb-2">
-                                <div class="flex flex-wrap items-center gap-1.5">
+                    <div onclick="switchToTrial('${trial.id}')" class="bg-white rounded-2xl border border-slate-200 hover:border-emerald-500 p-5 shadow-2xs hover:shadow-md transition cursor-pointer flex flex-col justify-between gap-4">
+                        <div class="space-y-2.5">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="flex flex-wrap items-center gap-2">
                                     ${statusBadge}
-                                    <span class="text-xs font-mono-code text-slate-400">${trial.identity.date || "-"}</span>
+                                    <span class="text-xs text-slate-400 font-mono-code">${escapeHtml(id.date || "-")}</span>
                                 </div>
-                                ${deleteBtnHtml}
+                                ${deleteBtn}
                             </div>
 
-                            <h3 class="font-extrabold text-slate-900 text-base sm:text-lg leading-snug">
-                                ${trial.identity.item} <span class="text-emerald-700 font-bold">• ${trial.identity.colour}</span>
-                            </h3>
+                            <div>
+                                <h3 class="font-extrabold text-base text-slate-900 leading-snug">
+                                    ${escapeHtml(id.item || "Order Baru")} <span class="text-emerald-700">• ${escapeHtml(id.colour || "-")}</span>
+                                </h3>
+                                <p class="text-xs text-slate-500 line-clamp-1 mt-0.5">${escapeHtml(id.purpose || "-")}</p>
+                            </div>
 
-                            <div class="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100 font-mono-code">
-                                <div><span class="text-slate-400">SO:</span> <strong>${trial.identity.so}</strong></div>
-                                <div><span class="text-slate-400">PRO:</span> <strong>${trial.identity.pro}</strong></div>
-                                <div class="col-span-2 truncate"><span class="text-slate-400">Chop:</span> <strong>${trial.identity.chop || "-"}</strong> / Greige: <strong>${trial.identity.chopGreige || "-"}</strong></div>
+                            <div class="grid grid-cols-3 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 text-xs font-mono-code">
+                                <div>
+                                    <span class="text-[10px] text-slate-400 block font-sans">NO. SO</span>
+                                    <strong class="text-slate-800 truncate block">${escapeHtml(id.so || "-")}</strong>
+                                </div>
+                                <div>
+                                    <span class="text-[10px] text-slate-400 block font-sans">NO. PRO</span>
+                                    <strong class="text-slate-800 truncate block">${escapeHtml(id.pro || "-")}</strong>
+                                </div>
+                                <div>
+                                    <span class="text-[10px] text-slate-400 block font-sans">CHOP</span>
+                                    <strong class="text-slate-800 truncate block">${escapeHtml(id.chop || "-")}</strong>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="space-y-2">
-                            <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                                <div class="h-full ${completed ? "bg-emerald-500" : "bg-amber-500"} rounded-full" style="width: ${pct}%"></div>
-                            </div>
+                        <div class="space-y-2 pt-2 border-t border-slate-100">
                             <div class="flex items-center justify-between text-xs">
-                                <span class="text-slate-600">${nextInfo}</span>
-                                <span class="font-bold text-slate-900 flex items-center gap-1">
-                                    <span>${completed ? "Lihat Detail" : "Lanjutkan"}</span>
-                                    <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
-                                </span>
+                                <span class="font-semibold ${finished ? "text-emerald-700" : "text-amber-700"}">${escapeHtml(nextLabel)}</span>
+                                <span class="font-bold text-slate-600">${done}/${total} Tahap</span>
+                            </div>
+                            <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                                <div class="h-full ${finished ? "bg-emerald-500" : "bg-amber-500"} rounded-full transition-all" style="width: ${pct}%"></div>
                             </div>
                         </div>
                     </div>
@@ -1233,7 +1253,7 @@
                 operatorName: "",
                 completedAt: "",
                 notes: "",
-                qcResult: "", // "OK" atau "FAILED" khusus proses QC
+                qcResult: "",
                 parameters: allParams
             };
         }
@@ -1450,7 +1470,7 @@
                             HASIL QC: ${step.qcResult || "-"}
                         </span>
                         <span class="text-xs text-slate-700">
-                            <strong>Note QC:</strong> ${step.notes || "-"}
+                            <strong>Note QC:</strong> ${escapeHtml(step.notes || "-")}
                         </span>
                     </div>
                 `;
@@ -1462,8 +1482,8 @@
                         : "bg-slate-50 border-slate-200/80 text-slate-800";
                     return `
                         <div class="${highlight} px-2.5 py-1.5 rounded-lg border text-xs">
-                            <span class="text-slate-500 block text-[10px]">${p.name}</span>
-                            <span class="font-bold font-mono-code">${val}</span>
+                            <span class="text-slate-500 block text-[10px]">${escapeHtml(p.name)}</span>
+                            <span class="font-bold font-mono-code">${escapeHtml(val)}</span>
                         </div>
                     `;
                 }).join("");
@@ -1471,7 +1491,7 @@
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                         ${filledBadges}
                     </div>
-                    ${step.notes ? `<p class="mt-2.5 text-xs text-slate-600 bg-amber-50/70 px-3 py-2 rounded-lg border border-amber-200/60"><strong>Catatan Lapangan:</strong> ${step.notes}</p>` : ""}
+                    ${step.notes ? `<p class="mt-2.5 text-xs text-slate-600 bg-amber-50/70 px-3 py-2 rounded-lg border border-amber-200/60"><strong>Catatan Lapangan:</strong> ${escapeHtml(step.notes)}</p>` : ""}
                 `;
             }
 
@@ -1494,11 +1514,11 @@
                                 <span class="sm:hidden w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">✓</span>
                                 <div>
                                     <div class="flex items-center gap-2">
-                                        <h3 class="font-bold text-slate-900 text-sm sm:text-base">${sIdx + 1}. ${step.name}</h3>
+                                        <h3 class="font-bold text-slate-900 text-sm sm:text-base">${sIdx + 1}. ${escapeHtml(step.name)}</h3>
                                         <span class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-600 text-white">SELESAI</span>
                                     </div>
                                     <p class="text-xs text-slate-600 mt-0.5">
-                                        Petugas: <strong>${step.operatorName}</strong> • Selesai: <span class="font-mono-code">${step.completedAt}</span>
+                                        Petugas: <strong>${escapeHtml(step.operatorName)}</strong> • Selesai: <span class="font-mono-code">${escapeHtml(step.completedAt)}</span>
                                     </p>
                                 </div>
                             </div>
@@ -1541,7 +1561,7 @@
                                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-purple-600 text-white uppercase tracking-wider mb-1">
                                             ● Tahap QC Aktif Saat Ini
                                         </span>
-                                        <h3 class="font-extrabold text-slate-900 text-base sm:text-lg">${sIdx + 1}. ${step.name}</h3>
+                                        <h3 class="font-extrabold text-slate-900 text-base sm:text-lg">${sIdx + 1}. ${escapeHtml(step.name)}</h3>
                                     </div>
                                 </div>
                                 <span class="text-xs font-semibold text-purple-900 bg-purple-200/60 px-3 py-1 rounded-full">
@@ -1550,10 +1570,9 @@
                             </div>
 
                             <div class="p-4 sm:p-6 space-y-5">
-                                <!-- Pilihan OK atau FAILED -->
                                 <div>
                                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                                        Keputusan Hasil ${step.name} <span class="text-rose-500">*</span>
+                                        Keputusan Hasil ${escapeHtml(step.name)} <span class="text-rose-500">*</span>
                                     </label>
                                     <div class="grid grid-cols-2 gap-3">
                                         <button type="button" onclick="setQcDecision(${sIdx}, 'OK')"
@@ -1569,13 +1588,12 @@
                                     </div>
                                 </div>
 
-                                <!-- Note QC & Nama Petugas QC -->
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div>
                                         <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                                             Note / Catatan Hasil QC <span class="text-rose-500">*</span>
                                         </label>
-                                        <input type="text" id="notes_input_${sIdx}" value="${step.notes || ""}"
+                                        <input type="text" id="notes_input_${sIdx}" value="${escapeHtml(step.notes || "")}"
                                             oninput="updateStepMeta(${sIdx}, 'notes', this.value)"
                                             placeholder="Contoh: Warna sesuai standar, tidak ada cacat / belang"
                                             class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-purple-500 outline-none">
@@ -1584,7 +1602,7 @@
                                         <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                                             Nama Petugas QC <span class="text-rose-500">*</span>
                                         </label>
-                                        <input type="text" id="operator_input_${sIdx}" value="${step.operatorName || ""}"
+                                        <input type="text" id="operator_input_${sIdx}" value="${escapeHtml(step.operatorName || "")}"
                                             oninput="updateStepMeta(${sIdx}, 'operatorName', this.value)"
                                             placeholder="Masukkan nama petugas QC..."
                                             class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-purple-500 outline-none">
@@ -1595,7 +1613,7 @@
                                     <button type="button" id="completeBtn_${sIdx}" onclick="completeProcessStep(${sIdx})"
                                         class="w-full py-4 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-extrabold text-sm sm:text-base shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-2.5">
                                         <i data-lucide="check-circle-2" class="w-6 h-6"></i>
-                                        <span>SELESAI ${step.name} & SIMPAN</span>
+                                        <span>SELESAI ${escapeHtml(step.name)} & SIMPAN</span>
                                     </button>
                                 </div>
                             </div>
@@ -1604,19 +1622,18 @@
                 `;
             }
 
-            // Render untuk Proses Produksi (Parameter Mesin + Hasil Uji Kain: Lebar, g/yd, gsm, Density)
             const machineParams = step.parameters.map((p, idx) => ({ ...p, origIdx: idx })).filter(p => p.category !== "fabric_outcome");
             const fabricParams = step.parameters.map((p, idx) => ({ ...p, origIdx: idx })).filter(p => p.category === "fabric_outcome");
 
             const renderParamBox = (p, accentRing) => {
                 const pIdx = p.origIdx;
                 const stdBadge = p.stdValue
-                    ? `<span class="text-[11px] font-mono-code bg-sky-100 text-sky-800 px-2 py-0.5 rounded font-semibold">STD: ${p.stdValue}</span>`
+                    ? `<span class="text-[11px] font-mono-code bg-sky-100 text-sky-800 px-2 py-0.5 rounded font-semibold">STD: ${escapeHtml(p.stdValue)}</span>`
                     : "";
                 return `
                     <div class="p-3 rounded-xl border ${p.isNA ? "bg-slate-100 border-slate-200" : "bg-white border-slate-200"} transition">
                         <div class="flex items-center justify-between gap-2 mb-1.5">
-                            <label class="text-xs font-bold text-slate-800">${p.name} <span class="text-rose-500">*</span></label>
+                            <label class="text-xs font-bold text-slate-800">${escapeHtml(p.name)} <span class="text-rose-500">*</span></label>
                             <label class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 cursor-pointer select-none">
                                 <input type="checkbox" ${p.isNA ? "checked" : ""} onchange="toggleParamNA(${sIdx}, ${pIdx}, this.checked)" class="rounded text-emerald-600 focus:ring-0">
                                 <span>N/A</span>
@@ -1625,7 +1642,7 @@
                         ${stdBadge ? `<div class="mb-1.5">${stdBadge}</div>` : ""}
                         <input type="text"
                             id="param_input_${sIdx}_${pIdx}"
-                            value="${p.isNA ? "N/A" : (p.actualValue || "")}"
+                            value="${p.isNA ? "N/A" : escapeHtml(p.actualValue || "")}"
                             ${p.isNA ? "disabled" : ""}
                             oninput="updateActualParamValue(${sIdx}, ${pIdx}, this.value)"
                             placeholder="${p.isNA ? "Tidak diukur (N/A)" : "Isi hasil aktual..."}"
@@ -1649,7 +1666,7 @@
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-500 text-white uppercase tracking-wider mb-1">
                                         ● Proses Aktif Saat Ini
                                     </span>
-                                    <h3 class="font-extrabold text-slate-900 text-base sm:text-lg">${sIdx + 1}. ${step.name}</h3>
+                                    <h3 class="font-extrabold text-slate-900 text-base sm:text-lg">${sIdx + 1}. ${escapeHtml(step.name)}</h3>
                                 </div>
                             </div>
                             <span class="text-xs font-semibold text-amber-900 bg-amber-200/60 px-3 py-1 rounded-full">
@@ -1658,52 +1675,48 @@
                         </div>
 
                         <div class="p-4 sm:p-6 space-y-6">
-                            <!-- Bagian 1: Parameter Mesin -->
                             <div>
                                 <h4 class="text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                                     <i data-lucide="sliders" class="w-4 h-4 text-amber-600"></i>
-                                    <span>1. Parameter Kondisi Mesin (${step.name})</span>
+                                    <span>1. Parameter Kondisi Mesin (${escapeHtml(step.name)})</span>
                                 </h4>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
                                     ${machineParams.map(p => renderParamBox(p, "focus:ring-amber-500 focus:border-amber-500")).join("")}
                                 </div>
                             </div>
 
-                            <!-- Bagian 2: Hasil Uji Kain (Lebar, g/yd, gsm, Density) -->
                             <div class="bg-sky-50/70 p-4 rounded-2xl border border-sky-200">
                                 <h4 class="text-xs font-extrabold text-sky-900 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                                     <i data-lucide="ruler" class="w-4 h-4 text-sky-600"></i>
-                                    <span>2. Hasil Uji Kain Setelah ${step.name} (Lebar, g/yd, GSM, Density)</span>
+                                    <span>2. Hasil Uji Kain Setelah ${escapeHtml(step.name)} (Lebar, g/yd, GSM, Density)</span>
                                 </h4>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                     ${fabricParams.map(p => renderParamBox(p, "focus:ring-sky-500 focus:border-sky-500")).join("")}
                                 </div>
                             </div>
 
-                            <!-- Catatan Kondisi & Nama Operator -->
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-100">
                                 <div>
                                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Kondisi Kain / Catatan Lapangan</label>
-                                    <input type="text" id="notes_input_${sIdx}" value="${step.notes || ""}"
+                                    <input type="text" id="notes_input_${sIdx}" value="${escapeHtml(step.notes || "")}"
                                         oninput="updateStepMeta(${sIdx}, 'notes', this.value)"
                                         placeholder="Contoh: Kain normal, tidak ada lipatan / belang"
                                         class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-amber-500 outline-none">
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Operator Pelaksana <span class="text-rose-500">*</span></label>
-                                    <input type="text" id="operator_input_${sIdx}" value="${step.operatorName || ""}"
+                                    <input type="text" id="operator_input_${sIdx}" value="${escapeHtml(step.operatorName || "")}"
                                         oninput="updateStepMeta(${sIdx}, 'operatorName', this.value)"
                                         placeholder="Masukkan nama operator..."
                                         class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-amber-500 outline-none">
                                 </div>
                             </div>
 
-                            <!-- TOMBOL HIJAU SELESAI -->
                             <div class="pt-2">
                                 <button type="button" id="completeBtn_${sIdx}" onclick="completeProcessStep(${sIdx})"
                                     class="w-full py-4 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-extrabold text-sm sm:text-base shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-2.5">
                                     <i data-lucide="check-circle-2" class="w-6 h-6"></i>
-                                    <span>SELESAI PROSES ${step.name} & SIMPAN</span>
+                                    <span>SELESAI PROSES ${escapeHtml(step.name)} & SIMPAN</span>
                                 </button>
                             </div>
                         </div>
@@ -1723,7 +1736,7 @@
                         <div class="flex items-center gap-3">
                             <span class="sm:hidden w-6 h-6 rounded-full bg-slate-200 text-slate-500 text-xs font-bold flex items-center justify-center">${sIdx + 1}</span>
                             <div>
-                                <h4 class="font-bold text-slate-600 text-sm">${sIdx + 1}. ${step.name}</h4>
+                                <h4 class="font-bold text-slate-600 text-sm">${sIdx + 1}. ${escapeHtml(step.name)}</h4>
                                 <p class="text-xs text-slate-400">Menunggu proses sebelumnya selesai</p>
                             </div>
                         </div>
@@ -1875,74 +1888,155 @@
         }
 
         // -------------------------------------------------------------
-        // 8. EXPORT EXCEL KHUSUS R&D (VERIFIKASI PASSWORD SERVER-SIDE)
+        // 8. EXPORT EXCEL (SEARCH & PILIH PRO + PASSWORD SERVER-SIDE)
         // -------------------------------------------------------------
-        async function verifyAndExportExcel(e) {
-            e.preventDefault();
-            const pwdInput = document.getElementById("rndPasswordInput");
-            const errorMsg = document.getElementById("passwordErrorMsg");
-            const submitBtn = document.getElementById("exportSubmitBtn");
-            const enteredPwd = pwdInput.value.trim();
+        function renderExportTrialList() {
+            const listEl = document.getElementById("exportTrialList");
+            const summaryEl = document.getElementById("exportSelectedSummary");
+            const query = (document.getElementById("exportSearchInput")?.value || "").trim().toLowerCase();
 
-            if (!enteredPwd) return;
-            errorMsg.classList.add("hidden");
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>Memverifikasi R&D...</span>`;
+            if (!listEl) return;
+
+            const filtered = allTrials.filter(t => {
+                const id = t.identity || {};
+                if (!query) return true;
+                return (
+                    (id.pro || "").toLowerCase().includes(query) ||
+                    (id.so || "").toLowerCase().includes(query) ||
+                    (id.item || "").toLowerCase().includes(query) ||
+                    (id.chop || "").toLowerCase().includes(query) ||
+                    (id.chopGreige || "").toLowerCase().includes(query) ||
+                    (id.colour || "").toLowerCase().includes(query)
+                );
+            });
+
+            if (filtered.length === 0) {
+                listEl.innerHTML = `<div class="p-4 text-center text-xs text-slate-400">Tidak ada PRO / trial yang cocok dengan pencarian "${escapeHtml(query)}".</div>`;
+            } else {
+                listEl.innerHTML = filtered.map(t => {
+                    const id = t.identity || {};
+                    const isChecked = selectedExportIds.has(t.id);
+                    const doneCount = t.steps.filter(s => s.status === "completed").length;
+                    const isFinished = t.steps.length > 0 && doneCount === t.steps.length;
+                    return `
+                        <label class="flex items-start gap-3 p-3 hover:bg-white cursor-pointer transition select-none ${isChecked ? "bg-emerald-50/60" : ""}">
+                            <input type="checkbox" ${isChecked ? "checked" : ""} onchange="toggleExportTrialSelection('${t.id}')" class="mt-1 rounded text-emerald-600 focus:ring-emerald-500">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="font-bold text-xs text-slate-900 truncate">PRO: ${escapeHtml(id.pro || "-")}</span>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${isFinished ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}">
+                                        ${doneCount}/${t.steps.length} Proses
+                                    </span>
+                                </div>
+                                <div class="text-[11px] text-slate-600 truncate mt-0.5">
+                                    Item: <strong>${escapeHtml(id.item || "-")}</strong> (${escapeHtml(id.colour || "-")}) • SO: ${escapeHtml(id.so || "-")}
+                                </div>
+                                <div class="text-[10px] text-slate-400 truncate">
+                                    Chop: ${escapeHtml(id.chop || "-")} | Tgl: ${escapeHtml(id.date || "-")}
+                                </div>
+                            </div>
+                        </label>
+                    `;
+                }).join("");
+            }
+
+            if (summaryEl) {
+                summaryEl.textContent = `${selectedExportIds.size} PRO dipilih untuk di-export`;
+            }
+        }
+
+        function toggleExportTrialSelection(trialId) {
+            if (selectedExportIds.has(trialId)) {
+                selectedExportIds.delete(trialId);
+            } else {
+                selectedExportIds.add(trialId);
+            }
+            renderExportTrialList();
+        }
+
+        function toggleSelectAllExport(selectAll) {
+            const query = (document.getElementById("exportSearchInput")?.value || "").trim().toLowerCase();
+            allTrials.forEach(t => {
+                const id = t.identity || {};
+                const matches = !query ||
+                    (id.pro || "").toLowerCase().includes(query) ||
+                    (id.so || "").toLowerCase().includes(query) ||
+                    (id.item || "").toLowerCase().includes(query) ||
+                    (id.chop || "").toLowerCase().includes(query) ||
+                    (id.chopGreige || "").toLowerCase().includes(query);
+                if (matches) {
+                    if (selectAll) selectedExportIds.add(t.id);
+                    else selectedExportIds.delete(t.id);
+                }
+            });
+            renderExportTrialList();
+        }
+
+        async function verifyAndExportExcel() {
+            const pwdInput = document.getElementById("rndPasswordInput").value.trim();
+            const errMsg = document.getElementById("passwordErrorMsg");
+            const btn = document.getElementById("btnConfirmExport");
+
+            const trialsToExport = allTrials.filter(t => selectedExportIds.has(t.id));
+            if (trialsToExport.length === 0) {
+                showToast("Centang minimal 1 nomor PRO terlebih dahulu!", "error");
+                return;
+            }
+
+            if (!pwdInput) {
+                errMsg.querySelector("span").textContent = "Masukkan password R&D terlebih dahulu!";
+                errMsg.classList.remove("hidden");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>Memverifikasi...</span>`;
             refreshIcons();
 
             try {
-                const res = await callBackendApi({
-                    action: "verifyRnd",
-                    password: enteredPwd
-                });
+                const authRes = await callBackendApi({ action: "verifyRnd", password: pwdInput });
 
-                if (!res || !res.ok || res.role !== "RND") {
-                    errorMsg.textContent = (res && res.message) ? res.message : "Password R&D salah! Akses ditolak server.";
-                    errorMsg.classList.remove("hidden");
-                    pwdInput.focus();
+                if (!authRes || !authRes.ok || authRes.role !== "RND") {
+                    errMsg.querySelector("span").textContent = (authRes && authRes.message) || "Password salah! Hanya tim R&D yang dapat mengunduh laporan Excel.";
+                    errMsg.classList.remove("hidden");
                     return;
                 }
 
-                const scope = document.getElementById("exportScope").value;
-                const trialsToExport = (scope === "current" && currentTrial) ? [currentTrial] : allTrials;
-
-                if (!trialsToExport || trialsToExport.length === 0) {
-                    showToast("Tidak ada data trial untuk di-export.", "error");
-                    closeModal("exportModal");
-                    return;
-                }
-
-                generateExcelWorkbook(trialsToExport);
-                pwdInput.value = "";
+                errMsg.classList.add("hidden");
                 closeModal("exportModal");
-                showToast("File Excel R&D berhasil diunduh!", "success");
+                generateExcelWorkbook(trialsToExport);
             } catch (err) {
-                errorMsg.textContent = "Gagal menghubungi server otorisasi R&D.";
-                errorMsg.classList.remove("hidden");
+                errMsg.querySelector("span").textContent = "Gagal menghubungi server otorisasi R&D.";
+                errMsg.classList.remove("hidden");
             } finally {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = `<i data-lucide="download" class="w-4 h-4"></i><span>Download .XLSX</span>`;
+                btn.disabled = false;
+                btn.innerHTML = `<i data-lucide="download" class="w-4 h-4"></i><span>Download .XLSX</span>`;
                 refreshIcons();
             }
         }
 
         function generateExcelWorkbook(trials) {
+            if (typeof XLSX === "undefined") {
+                showToast("Library Excel sedang dimuat, coba sesaat lagi.", "error");
+                return;
+            }
+
             const wb = XLSX.utils.book_new();
 
             trials.forEach((trial, tIdx) => {
-                const id = trial.identity;
+                const id = trial.identity || {};
                 const rows = [
                     ["HASIL TEST & TRACKING PROSES R&D"],
                     [],
-                    ["DATE", ":", id.date],
-                    ["ITEM", ":", id.item],
+                    ["DATE", ":", id.date || "-"],
+                    ["ITEM", ":", id.item || "-"],
                     ["CHOP NO", ":", id.chop || "-"],
                     ["CHOP GREIGE", ":", id.chopGreige || "-"],
-                    ["COLOUR", ":", id.colour],
-                    ["SO", ":", id.so],
-                    ["PRO", ":", id.pro],
-                    ["PIC / INISIATOR", ":", id.pic],
-                    ["TUJUAN", ":", id.purpose],
+                    ["COLOUR", ":", id.colour || "-"],
+                    ["SO", ":", id.so || "-"],
+                    ["PRO", ":", id.pro || "-"],
+                    ["PIC / INISIATOR", ":", id.pic || "-"],
+                    ["TUJUAN", ":", id.purpose || "-"],
                     [],
                     ["NO", "ALUR PROSES", "MESIN", "PARAMETER / HASIL UJI", "STD (KARTU)", "ACTUAL LAPANGAN", "STATUS", "OPERATOR / QC", "WAKTU SELESAI", "CATATAN / NOTE QC"]
                 ];
@@ -1986,43 +2080,45 @@
                     { wch: 20 }, { wch: 32 }
                 ];
 
-                const rawSheetName = `${tIdx + 1}_${id.item || "Trial"}`.replace(/[\\\/\?\*\[\]]/g, "_").substring(0, 30);
+                const rawSheetName = `${id.pro || id.item || "Trial"}_${tIdx + 1}`.replace(/[\\\/\?\*\[\]:]/g, "_").substring(0, 31);
                 XLSX.utils.book_append_sheet(wb, ws, rawSheetName);
             });
 
-            const fileName = trials.length === 1
-                ? `Summary_Hasil_Test_${trials[0].identity.item || "Trial"}.xlsx`
-                : `Rekap_Semua_Trial_RND_${new Date().toISOString().split("T")[0]}.xlsx`;
+            const fileLabel = trials.length === 1
+                ? ((trials[0].identity && (trials[0].identity.pro || trials[0].identity.item)) || "Trial").replace(/[^a-zA-Z0-9_-]/g, "_")
+                : `${trials.length}_PRO_Selected`;
+            const fileName = `Summary_Hasil_Test_${fileLabel}_${new Date().toISOString().split("T")[0]}.xlsx`;
 
             XLSX.writeFile(wb, fileName);
+            showToast(`Berhasil mengunduh ${trials.length} PRO ke Excel!`, "success");
         }
 
         // -------------------------------------------------------------
         // 9. MODAL & TOAST HELPERS
         // -------------------------------------------------------------
         function openModal(id) {
-            if (id === "exportModal") {
-                const exportAllEl = document.getElementById("exportAllCount");
-                const exportCurrEl = document.getElementById("exportCurrentLabel");
-                const exportScopeEl = document.getElementById("exportScope");
-                if (exportAllEl) exportAllEl.textContent = allTrials.length;
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            modal.classList.remove("hidden");
 
-                if (currentTrial && currentTrial.identity && currentTrial.identity.item) {
-                    if (exportCurrEl) exportCurrEl.textContent = currentTrial.identity.item;
-                    if (exportScopeEl) exportScopeEl.value = "current";
-                } else {
-                    if (exportCurrEl) exportCurrEl.textContent = "Tidak ada trial aktif";
-                    if (exportScopeEl) exportScopeEl.value = "all";
-                }
-                document.getElementById("passwordErrorMsg").classList.add("hidden");
+            if (id === "exportModal") {
                 document.getElementById("rndPasswordInput").value = "";
+                document.getElementById("passwordErrorMsg").classList.add("hidden");
+                const searchEl = document.getElementById("exportSearchInput");
+                if (searchEl) searchEl.value = "";
+
+                selectedExportIds = new Set();
+                if (currentTrial && currentTrial.id) {
+                    selectedExportIds.add(currentTrial.id);
+                }
+                renderExportTrialList();
             }
-            document.getElementById(id).classList.remove("hidden");
             refreshIcons();
         }
 
         function closeModal(id) {
-            document.getElementById(id).classList.add("hidden");
+            const modal = document.getElementById(id);
+            if (modal) modal.classList.add("hidden");
         }
 
         function showToast(message, type = "info") {
@@ -2042,7 +2138,7 @@
             toast.className = `pointer-events-auto flex items-start gap-2.5 px-4 py-3 rounded-xl border shadow-xl text-xs sm:text-sm font-medium transition-all duration-300 ${bgClass}`;
             toast.innerHTML = `
                 <i data-lucide="${iconName}" class="w-4 h-4 shrink-0 mt-0.5"></i>
-                <span class="flex-1 leading-snug">${message}</span>
+                <span class="flex-1 leading-snug">${escapeHtml(message)}</span>
             `;
 
             container.appendChild(toast);
