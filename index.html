@@ -2,7 +2,13 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="R&D Tracker">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="format-detection" content="telephone=no">
     <title>R&D Trial Process Tracker</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -15,13 +21,60 @@
     <!-- SheetJS (XLSX) untuk export Excel yang rapi bagi R&D -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
+        :root {
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --safe-left: env(safe-area-inset-left, 0px);
+            --safe-right: env(safe-area-inset-right, 0px);
+        }
+        html {
+            -webkit-text-size-adjust: 100%;
+            scroll-behavior: smooth;
+        }
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background-color: #f8fafc;
             color: #0f172a;
+            min-height: 100dvh;
+            padding-bottom: calc(16px + var(--safe-bottom));
+            -webkit-tap-highlight-color: transparent;
         }
         .font-mono-code {
             font-family: 'JetBrains Mono', monospace;
+        }
+        /* Safe area helpers untuk iPhone (Notch / Dynamic Island / Home Bar) */
+        .safe-header {
+            padding-top: max(12px, var(--safe-top));
+        }
+        .safe-modal {
+            padding-top: max(16px, var(--safe-top));
+            padding-bottom: max(16px, var(--safe-bottom));
+        }
+        .safe-toast {
+            bottom: calc(16px + var(--safe-bottom));
+        }
+        /* Cegah Safari iOS auto-zoom saat fokus ke input (<16px) */
+        @media (max-width: 640px) {
+            input[type="text"],
+            input[type="password"],
+            input[type="date"],
+            input[type="number"],
+            select,
+            textarea {
+                font-size: 16px !important;
+            }
+        }
+        /* Area sentuh nyaman untuk jari di lapangan */
+        button, [role="button"], label.touch-target {
+            touch-action: manipulation;
+        }
+        /* Scrollbar halus & sembunyikan scrollbar horizontal di stepper mobile */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
         }
         ::-webkit-scrollbar {
             width: 6px;
@@ -43,13 +96,13 @@
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col">
+<body class="flex flex-col">
 
     <!-- ======================================================================= -->
     <!-- LAYAR KUNCI LOGIN WAJIB (DIVERIFIKASI LANGSUNG KE GOOGLE APPS SCRIPT)   -->
     <!-- ======================================================================= -->
-    <div id="authLockScreen" class="fixed inset-0 z-50 bg-slate-950 flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl text-white space-y-6">
+    <div id="authLockScreen" class="fixed inset-0 z-50 bg-slate-950 flex items-center justify-center p-4 safe-modal overflow-y-auto">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl text-white space-y-6 my-auto">
             <div class="text-center space-y-2">
                 <div class="w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto shadow-lg">
                     <i data-lucide="shield-lock" class="w-8 h-8"></i>
@@ -61,7 +114,7 @@
             <form onsubmit="handleAppLogin(event)" class="space-y-4">
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Password Akses Sistem</label>
-                    <input type="password" id="appLoginPassword" required autocomplete="off"
+                    <input type="password" id="appLoginPassword" required autocomplete="current-password"
                         placeholder="Masukkan password..."
                         class="w-full px-4 py-3.5 rounded-2xl bg-slate-950 border border-slate-700 text-white font-mono-code text-base focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
                 </div>
@@ -72,7 +125,7 @@
                 </div>
 
                 <button type="submit" id="loginSubmitBtn"
-                    class="w-full py-3.5 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2">
+                    class="w-full min-h-[48px] py-3.5 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-extrabold text-sm shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2">
                     <i data-lucide="log-in" class="w-4 h-4"></i>
                     <span>Masuk & Sinkronisasi Data</span>
                 </button>
@@ -87,44 +140,44 @@
     <!-- ======================================================================= -->
     <!-- TOP NAVIGATION BAR                                                      -->
     <!-- ======================================================================= -->
-    <header class="bg-slate-900 text-white sticky top-0 z-30 shadow-md">
-        <div class="max-w-5xl mx-auto px-4 py-3.5 flex flex-wrap items-center justify-between gap-3">
-            <div class="flex items-center gap-3 cursor-pointer" onclick="goToDashboard()">
-                <div class="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                    <i data-lucide="clipboard-check" class="w-6 h-6 text-white"></i>
+    <header class="bg-slate-900 text-white sticky top-0 z-30 shadow-md safe-header">
+        <div class="max-w-5xl mx-auto px-3.5 sm:px-4 pb-3 pt-1 flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2.5 sm:gap-3 cursor-pointer min-w-0" onclick="goToDashboard()">
+                <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
+                    <i data-lucide="clipboard-check" class="w-5 h-5 sm:w-6 sm:h-6 text-white"></i>
                 </div>
-                <div>
-                    <div class="flex items-center gap-2">
-                        <h1 class="font-bold text-base sm:text-lg tracking-tight leading-tight">R&D Trial Tracker</h1>
-                        <span id="roleBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-emerald-400 border border-emerald-500/30 uppercase">
+                <div class="min-w-0">
+                    <div class="flex items-center gap-1.5 sm:gap-2">
+                        <h1 class="font-bold text-sm sm:text-lg tracking-tight leading-tight truncate">R&D Trial Tracker</h1>
+                        <span id="roleBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-emerald-400 border border-emerald-500/30 uppercase shrink-0">
                             AKSES
                         </span>
                     </div>
-                    <p id="cloudSyncStatus" class="text-xs text-slate-400 flex items-center gap-1.5">
-                        <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
-                        <span>Cloud Sync Aktif</span>
+                    <p id="cloudSyncStatus" class="text-[11px] sm:text-xs text-slate-400 flex items-center gap-1.5 truncate">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block shrink-0"></span>
+                        <span class="truncate">Cloud Sync Aktif</span>
                     </p>
                 </div>
             </div>
 
-            <div class="flex items-center gap-2">
-                <button type="button" id="navDashboardBtn" onclick="goToDashboard()" class="hidden px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
+            <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                <button type="button" id="navDashboardBtn" onclick="goToDashboard()" class="hidden min-h-[40px] px-2.5 sm:px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs font-semibold text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
                     <i data-lucide="layout-grid" class="w-4 h-4 text-sky-400"></i>
-                    <span>Dashboard</span>
+                    <span class="hidden sm:inline">Dashboard</span>
                 </button>
 
-                <button type="button" onclick="syncAllFromCloud(true)" id="syncNowBtn" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition flex items-center gap-1.5" title="Tarik data terbaru dari semua HP">
+                <button type="button" onclick="syncAllFromCloud(true)" id="syncNowBtn" class="min-h-[40px] min-w-[40px] px-2.5 sm:px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs font-semibold text-slate-200 border border-slate-700 transition flex items-center justify-center gap-1.5" title="Tarik data terbaru dari semua HP">
                     <i data-lucide="refresh-cw" class="w-4 h-4 text-sky-400"></i>
                     <span class="hidden sm:inline">Refresh</span>
                 </button>
 
-                <button type="button" onclick="openModal('exportModal')" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white shadow-sm transition flex items-center gap-1.5">
+                <button type="button" onclick="openModal('exportModal')" class="min-h-[40px] px-2.5 sm:px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-xs font-semibold text-white shadow-sm transition flex items-center gap-1.5">
                     <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
                     <span class="hidden sm:inline">Export Excel (R&D)</span>
                     <span class="sm:hidden">Excel</span>
                 </button>
 
-                <button type="button" onclick="logoutSession()" class="p-2 rounded-xl bg-slate-800 hover:bg-rose-900/60 text-slate-400 hover:text-rose-300 border border-slate-700 transition" title="Kunci Layar / Keluar">
+                <button type="button" onclick="logoutSession()" class="min-h-[40px] min-w-[40px] p-2 rounded-xl bg-slate-800 hover:bg-rose-900/60 active:scale-95 text-slate-400 hover:text-rose-300 border border-slate-700 transition flex items-center justify-center" title="Kunci Layar / Keluar">
                     <i data-lucide="lock" class="w-4 h-4"></i>
                 </button>
             </div>
@@ -132,97 +185,97 @@
 
         <!-- Stepper Progress Bar -->
         <div id="stepperBar" class="hidden bg-slate-800/80 border-t border-slate-700/70">
-            <div class="max-w-5xl mx-auto px-4 py-2.5 flex items-center justify-between text-xs sm:text-sm overflow-x-auto gap-2">
-                <button type="button" id="stepNav1" onclick="tryNavigateStep(1)" class="flex items-center gap-2 font-semibold text-emerald-400 whitespace-nowrap">
+            <div class="max-w-5xl mx-auto px-3.5 sm:px-4 py-2.5 flex items-center justify-between text-xs sm:text-sm overflow-x-auto no-scrollbar gap-2">
+                <button type="button" id="stepNav1" onclick="tryNavigateStep(1)" class="min-h-[34px] flex items-center gap-1.5 sm:gap-2 font-semibold text-emerald-400 whitespace-nowrap">
                     <span id="stepBadge1" class="w-6 h-6 rounded-full bg-emerald-500 text-slate-950 font-bold flex items-center justify-center text-xs">1</span>
                     <span>Identitas</span>
                 </button>
-                <div class="h-0.5 flex-1 bg-slate-700 min-w-[20px]"></div>
-                <button type="button" id="stepNav2" onclick="tryNavigateStep(2)" class="flex items-center gap-2 font-medium text-slate-400 whitespace-nowrap">
+                <div class="h-0.5 flex-1 bg-slate-700 min-w-[16px]"></div>
+                <button type="button" id="stepNav2" onclick="tryNavigateStep(2)" class="min-h-[34px] flex items-center gap-1.5 sm:gap-2 font-medium text-slate-400 whitespace-nowrap">
                     <span id="stepBadge2" class="w-6 h-6 rounded-full bg-slate-700 text-slate-300 font-bold flex items-center justify-center text-xs">2</span>
-                    <span>Routing Proses</span>
+                    <span>Routing</span>
                 </button>
-                <div class="h-0.5 flex-1 bg-slate-700 min-w-[20px]"></div>
-                <button type="button" id="stepNav3" onclick="tryNavigateStep(3)" class="flex items-center gap-2 font-medium text-slate-400 whitespace-nowrap">
+                <div class="h-0.5 flex-1 bg-slate-700 min-w-[16px]"></div>
+                <button type="button" id="stepNav3" onclick="tryNavigateStep(3)" class="min-h-[34px] flex items-center gap-1.5 sm:gap-2 font-medium text-slate-400 whitespace-nowrap">
                     <span id="stepBadge3" class="w-6 h-6 rounded-full bg-slate-700 text-slate-300 font-bold flex items-center justify-center text-xs">3</span>
-                    <span>Timeline Lapangan</span>
+                    <span>Lapangan</span>
                 </button>
             </div>
         </div>
     </header>
 
     <!-- Toast Notification Banner -->
-    <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+    <div id="toastContainer" class="fixed right-0 sm:right-4 left-0 sm:left-auto safe-toast z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
 
     <!-- Main Container -->
-    <main class="flex-1 max-w-5xl w-full mx-auto px-4 py-6 sm:py-8">
+    <main class="flex-1 max-w-5xl w-full mx-auto px-3.5 sm:px-4 py-4 sm:py-8">
 
         <!-- =================================================================== -->
         <!-- HALAMAN AWAL: DASHBOARD MONITORING TRIAL                            -->
         <!-- =================================================================== -->
-        <section id="step0Section" class="space-y-6">
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <section id="step0Section" class="space-y-4 sm:space-y-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4">
                 <div>
-                    <h2 class="text-lg sm:text-xl font-extrabold text-slate-900">Monitoring Trial Lapangan</h2>
+                    <h2 class="text-base sm:text-xl font-extrabold text-slate-900">Monitoring Trial Lapangan</h2>
                     <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Pilih kartu trial di bawah untuk melanjutkan input mesin, atau buat order trial baru.</p>
                 </div>
-                <button type="button" onclick="createNewTrial()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-5 py-3 rounded-xl shadow-md shadow-emerald-600/20 transition flex items-center justify-center gap-2 whitespace-nowrap">
+                <button type="button" onclick="createNewTrial()" class="w-full sm:w-auto min-h-[46px] bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-bold px-5 py-3 rounded-xl shadow-md shadow-emerald-600/20 transition flex items-center justify-center gap-2 whitespace-nowrap">
                     <i data-lucide="plus-circle" class="w-5 h-5"></i>
                     <span>Buat Trial Baru</span>
                 </button>
             </div>
 
             <!-- Kartu Ringkasan Status -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                <button type="button" id="filterCardRunning" onclick="setDashboardFilter('running')" class="text-left p-4 sm:p-5 rounded-2xl border-2 border-amber-500 bg-amber-50/70 shadow-sm transition flex items-center justify-between">
-                    <div>
-                        <p class="text-xs font-bold uppercase tracking-wider text-amber-700">Sedang Berjalan</p>
-                        <p id="statRunningCount" class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">0</p>
-                        <p class="text-[11px] text-amber-800 mt-1">Klik untuk lihat yang belum selesai</p>
+            <div class="grid grid-cols-3 sm:grid-cols-3 gap-2 sm:gap-4">
+                <button type="button" id="filterCardRunning" onclick="setDashboardFilter('running')" class="text-left p-3 sm:p-5 rounded-2xl border-2 border-amber-500 bg-amber-50/70 shadow-sm transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                    <div class="min-w-0">
+                        <p class="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-700 truncate">Berjalan</p>
+                        <p id="statRunningCount" class="text-xl sm:text-3xl font-extrabold text-slate-900 mt-0.5 sm:mt-1">0</p>
+                        <p class="hidden sm:block text-[11px] text-amber-800 mt-1">Klik untuk lihat yang belum selesai</p>
                     </div>
-                    <div class="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-600 flex items-center justify-center">
+                    <div class="hidden sm:flex w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-600 items-center justify-center shrink-0">
                         <i data-lucide="clock" class="w-6 h-6"></i>
                     </div>
                 </button>
 
-                <button type="button" id="filterCardCompleted" onclick="setDashboardFilter('completed')" class="text-left p-4 sm:p-5 rounded-2xl border border-slate-200 bg-white hover:border-emerald-400 shadow-sm transition flex items-center justify-between">
-                    <div>
-                        <p class="text-xs font-bold uppercase tracking-wider text-emerald-700">Sudah Selesai</p>
-                        <p id="statCompletedCount" class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">0</p>
-                        <p class="text-[11px] text-slate-500 mt-1">Klik untuk lihat riwayat selesai</p>
+                <button type="button" id="filterCardCompleted" onclick="setDashboardFilter('completed')" class="text-left p-3 sm:p-5 rounded-2xl border border-slate-200 bg-white hover:border-emerald-400 shadow-sm transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                    <div class="min-w-0">
+                        <p class="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-emerald-700 truncate">Selesai</p>
+                        <p id="statCompletedCount" class="text-xl sm:text-3xl font-extrabold text-slate-900 mt-0.5 sm:mt-1">0</p>
+                        <p class="hidden sm:block text-[11px] text-slate-500 mt-1">Klik untuk lihat riwayat selesai</p>
                     </div>
-                    <div class="w-12 h-12 rounded-2xl bg-emerald-500/15 text-emerald-600 flex items-center justify-center">
+                    <div class="hidden sm:flex w-12 h-12 rounded-2xl bg-emerald-500/15 text-emerald-600 items-center justify-center shrink-0">
                         <i data-lucide="check-circle-2" class="w-6 h-6"></i>
                     </div>
                 </button>
 
-                <button type="button" id="filterCardAll" onclick="setDashboardFilter('all')" class="text-left p-4 sm:p-5 rounded-2xl border border-slate-200 bg-white hover:border-slate-400 shadow-sm transition flex items-center justify-between">
-                    <div>
-                        <p class="text-xs font-bold uppercase tracking-wider text-slate-600">Semua Data Trial</p>
-                        <p id="statAllCount" class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">0</p>
-                        <p class="text-[11px] text-slate-500 mt-1">Tampilkan seluruh order trial</p>
+                <button type="button" id="filterCardAll" onclick="setDashboardFilter('all')" class="text-left p-3 sm:p-5 rounded-2xl border border-slate-200 bg-white hover:border-slate-400 shadow-sm transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                    <div class="min-w-0">
+                        <p class="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-600 truncate">Semua</p>
+                        <p id="statAllCount" class="text-xl sm:text-3xl font-extrabold text-slate-900 mt-0.5 sm:mt-1">0</p>
+                        <p class="hidden sm:block text-[11px] text-slate-500 mt-1">Tampilkan seluruh order trial</p>
                     </div>
-                    <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center">
+                    <div class="hidden sm:flex w-12 h-12 rounded-2xl bg-slate-100 text-slate-600 items-center justify-center shrink-0">
                         <i data-lucide="layers" class="w-6 h-6"></i>
                     </div>
                 </button>
             </div>
 
             <!-- Kolom Pencarian -->
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-3 sm:p-4">
                 <div class="relative flex items-center">
                     <i data-lucide="search" class="w-5 h-5 text-slate-400 absolute left-3.5 pointer-events-none"></i>
                     <input type="text" id="dashboardSearchInput" oninput="renderDashboard()"
-                        placeholder="Cari berdasarkan No. SO, No. PRO, Nama Chop / Greige, atau Kode Item..."
-                        class="w-full pl-11 pr-10 py-3 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
-                    <button type="button" id="clearSearchBtn" onclick="clearDashboardSearch()" class="hidden absolute right-3 text-slate-400 hover:text-slate-600 p-1">
+                        placeholder="Cari No. SO, PRO, Chop, atau Kode Item..."
+                        class="w-full min-h-[44px] pl-11 pr-10 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                    <button type="button" id="clearSearchBtn" onclick="clearDashboardSearch()" class="hidden absolute right-2 text-slate-400 hover:text-slate-600 p-2">
                         <i data-lucide="x-circle" class="w-5 h-5"></i>
                     </button>
                 </div>
             </div>
 
             <!-- Daftar Kartu Trial -->
-            <div id="dashboardTrialsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            <div id="dashboardTrialsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4"></div>
         </section>
 
         <!-- =================================================================== -->
@@ -230,7 +283,7 @@
         <!-- =================================================================== -->
         <section id="step1Section" class="hidden space-y-6">
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div class="p-5 sm:p-6 border-b border-slate-100 bg-slate-50/70 flex flex-wrap items-center justify-between gap-3">
+                <div class="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/70 flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 mb-2">
                             <i data-lucide="lock" class="w-3.5 h-3.5"></i> Tahap 1 • Wajib Diisi Sebelum Routing
@@ -238,49 +291,49 @@
                         <h2 class="text-lg sm:text-xl font-bold text-slate-900">Identitas Order & Kartu Trial</h2>
                         <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Lengkapi data SO, PRO, Item, dan Chop agar seluruh proses tercatat valid.</p>
                     </div>
-                    <button type="button" onclick="fillDemoIdentity()" class="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-200/70 hover:bg-slate-200 text-slate-700 transition flex items-center gap-1.5">
+                    <button type="button" onclick="fillDemoIdentity()" class="min-h-[38px] text-xs font-semibold px-3 py-2 rounded-xl bg-slate-200/70 hover:bg-slate-200 active:scale-95 text-slate-700 transition flex items-center gap-1.5">
                         <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-600"></i>
-                        <span>Isi Contoh Data Trial</span>
+                        <span>Isi Contoh Data</span>
                     </button>
                 </div>
 
-                <form id="identityForm" onsubmit="saveIdentityAndNext(event)" class="p-5 sm:p-6 space-y-5">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <form id="identityForm" onsubmit="saveIdentityAndNext(event)" class="p-4 sm:p-6 space-y-4 sm:space-y-5">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
                         <div>
                             <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Tanggal Trial <span class="text-rose-500">*</span></label>
-                            <input type="date" id="id_date" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                            <input type="date" id="id_date" required class="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Kode Item <span class="text-rose-500">*</span></label>
-                            <input type="text" id="id_item" required placeholder="Contoh: RJS-2526-210SN26533" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono-code focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                            <input type="text" id="id_item" required autocapitalize="characters" placeholder="Contoh: RJS-2526-210SN26533" class="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono-code focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Colour / Warna <span class="text-rose-500">*</span></label>
-                            <input type="text" id="id_colour" required placeholder="Contoh: C#STONE" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                            <input type="text" id="id_colour" required autocapitalize="characters" placeholder="Contoh: C#STONE" class="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">No. SO <span class="text-rose-500">*</span></label>
-                            <input type="text" id="id_so" required placeholder="Contoh: 2140014746" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono-code focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                            <input type="text" id="id_so" required inputmode="numeric" placeholder="Contoh: 2140014746" class="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono-code focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">No. PRO <span class="text-rose-500">*</span></label>
-                            <input type="text" id="id_pro" required placeholder="Contoh: 310027375 | 310027376" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono-code focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                            <input type="text" id="id_pro" required placeholder="Contoh: 310027375 | 310027376" class="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono-code focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Nama PIC / Inisiator <span class="text-rose-500">*</span></label>
-                            <input type="text" id="id_pic" required placeholder="Nama R&D / Leader Lapangan" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                            <input type="text" id="id_pic" required placeholder="Nama R&D / Leader Lapangan" class="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Chop No / Nama Chop <span class="text-rose-500">*</span></label>
-                            <input type="text" id="id_chop" required placeholder="Contoh: CH-8892 atau -" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                            <input type="text" id="id_chop" required autocapitalize="characters" placeholder="Contoh: CH-8892 atau -" class="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Chop Greige <span class="text-rose-500">*</span></label>
-                            <input type="text" id="id_chop_greige" required placeholder="Contoh: GR-4410 atau -" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                            <input type="text" id="id_chop_greige" required autocapitalize="characters" placeholder="Contoh: GR-4410 atau -" class="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Kartu STD Pembanding</label>
-                            <input type="text" id="id_std_ref" placeholder="Contoh: 310027209 (Opsional)" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono-code focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                            <input type="text" id="id_std_ref" placeholder="Contoh: 310027209 (Opsional)" class="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono-code focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
                         </div>
                     </div>
 
@@ -289,12 +342,12 @@
                         <textarea id="id_purpose" rows="2" required placeholder="Contoh: Test 3x ke-1. Dyestuff Yellow/Red/Blue ACE; sampel weight reduction 3 pcs" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"></textarea>
                     </div>
 
-                    <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
-                        <button type="button" onclick="goToDashboard()" class="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-50">
+                    <div class="pt-3 border-t border-slate-100 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3">
+                        <button type="button" onclick="goToDashboard()" class="min-h-[46px] px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-50 active:scale-[0.99]">
                             Batal
                         </button>
-                        <button type="submit" class="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white font-semibold px-6 py-3 rounded-xl shadow-sm transition flex items-center justify-center gap-2">
-                            <span>Simpan Identitas & Lanjut ke Routing</span>
+                        <button type="submit" class="w-full sm:w-auto min-h-[48px] bg-slate-900 hover:bg-slate-800 active:scale-[0.99] text-white font-semibold px-6 py-3 rounded-xl shadow-sm transition flex items-center justify-center gap-2">
+                            <span>Simpan Identitas & Lanjut</span>
                             <i data-lucide="arrow-right" class="w-4 h-4"></i>
                         </button>
                     </div>
@@ -307,7 +360,7 @@
         <!-- =================================================================== -->
         <section id="step2Section" class="hidden space-y-6">
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div class="p-5 sm:p-6 border-b border-slate-100 bg-slate-50/70 flex flex-wrap items-center justify-between gap-3">
+                <div class="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/70 flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-100 text-sky-800 mb-2">
                             <i data-lucide="git-commit" class="w-3.5 h-3.5"></i> Tahap 2 • Susun Urutan Mesin & QC
@@ -315,20 +368,20 @@
                         <h2 class="text-lg sm:text-xl font-bold text-slate-900">Alur Proses (Routing) Trial</h2>
                         <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Pilih proses sesuai kartu kerja. Setiap proses otomatis memiliki input hasil lebar, g/yd, gsm, & density (serta OK/Failed untuk QC).</p>
                     </div>
-                    <button type="button" onclick="loadFullStandardRouting()" class="text-xs font-semibold px-3 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 transition flex items-center gap-1.5">
+                    <button type="button" onclick="loadFullStandardRouting()" class="w-full sm:w-auto min-h-[40px] text-xs font-semibold px-3.5 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 active:scale-[0.99] text-sky-700 border border-sky-200 transition flex items-center justify-center gap-1.5">
                         <i data-lucide="list-checks" class="w-4 h-4"></i>
                         <span>Gunakan Routing Standar Lengkap</span>
                     </button>
                 </div>
 
-                <div class="p-5 sm:p-6 space-y-6">
-                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
+                <div class="p-4 sm:p-6 space-y-5 sm:space-y-6">
+                    <div class="bg-slate-50 p-3.5 sm:p-4 rounded-xl border border-slate-200/80 space-y-3">
                         <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Tambah Tahapan Proses ke Alur:</label>
                         <div class="flex flex-wrap gap-2" id="presetProcessButtons"></div>
 
                         <div class="pt-2 flex flex-col sm:flex-row gap-2">
-                            <input type="text" id="customProcessName" placeholder="Atau ketik proses lain (misal: PEACHING / COMPACTING)..." class="flex-1 px-3.5 py-2 rounded-xl border border-slate-300 text-sm bg-white focus:ring-2 focus:ring-emerald-500 outline-none">
-                            <button type="button" onclick="addCustomProcessToRouting()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5">
+                            <input type="text" id="customProcessName" autocapitalize="characters" placeholder="Atau ketik proses lain (misal: PEACHING)..." class="flex-1 min-h-[44px] px-3.5 py-2 rounded-xl border border-slate-300 text-sm bg-white focus:ring-2 focus:ring-emerald-500 outline-none">
+                            <button type="button" onclick="addCustomProcessToRouting()" class="min-h-[44px] px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-[0.99] text-white text-xs font-semibold transition flex items-center justify-center gap-1.5">
                                 <i data-lucide="plus" class="w-4 h-4"></i>
                                 <span>Tambah Proses Custom</span>
                             </button>
@@ -338,18 +391,18 @@
                     <div>
                         <div class="flex items-center justify-between mb-3">
                             <h3 class="text-sm font-bold text-slate-800">Urutan Eksekusi di Lapangan (<span id="routingCount">0</span> Tahap)</h3>
-                            <button type="button" onclick="clearRouting()" class="text-xs text-rose-600 hover:underline font-medium">Reset Urutan</button>
+                            <button type="button" onclick="clearRouting()" class="text-xs text-rose-600 hover:underline font-medium py-1 px-2">Reset Urutan</button>
                         </div>
-                        <div id="routingListContainer" class="space-y-2.5"></div>
+                        <div id="routingListContainer" class="space-y-3"></div>
                     </div>
 
-                    <div class="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
-                        <button type="button" onclick="goToStep(1)" class="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-50">
+                    <div class="pt-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3">
+                        <button type="button" onclick="goToStep(1)" class="min-h-[46px] px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-50 active:scale-[0.99]">
                             Kembali
                         </button>
-                        <button type="button" onclick="lockRoutingAndStartField()" class="flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+                        <button type="button" onclick="lockRoutingAndStartField()" class="flex-1 sm:flex-initial min-h-[48px] bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-bold px-6 py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2">
                             <i data-lucide="play-circle" class="w-5 h-5"></i>
-                            <span>Kunci Routing & Mulai Eksekusi Lapangan</span>
+                            <span>Kunci Routing & Mulai Eksekusi</span>
                         </button>
                     </div>
                 </div>
@@ -359,8 +412,8 @@
         <!-- =================================================================== -->
         <!-- TAHAP 3: TIMELINE EKSEKUSI LAPANGAN                                 -->
         <!-- =================================================================== -->
-        <section id="step3Section" class="hidden space-y-6">
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <section id="step3Section" class="hidden space-y-4 sm:space-y-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3.5 sm:gap-4">
                 <div class="space-y-1">
                     <div class="flex flex-wrap items-center gap-2">
                         <span id="trialOverallBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
@@ -370,13 +423,13 @@
                         <span class="text-xs text-slate-400">•</span>
                         <span id="summaryPurpose" class="text-xs font-medium text-slate-600"></span>
                     </div>
-                    <h2 class="text-lg sm:text-xl font-extrabold text-slate-900 flex flex-wrap items-center gap-2">
+                    <h2 class="text-base sm:text-xl font-extrabold text-slate-900 flex flex-wrap items-center gap-1.5 sm:gap-2">
                         <span id="summaryItem"></span>
                         <span class="text-slate-300">|</span>
                         <span id="summaryColour" class="text-emerald-700"></span>
                     </h2>
-                    <p class="text-xs text-slate-600 font-mono-code">
-                        SO: <strong id="summarySO"></strong> &nbsp;•&nbsp; PRO: <strong id="summaryPRO"></strong> &nbsp;•&nbsp; Chop: <span id="summaryChop"></span>
+                    <p class="text-xs text-slate-600 font-mono-code leading-relaxed">
+                        SO: <strong id="summarySO"></strong> • PRO: <strong id="summaryPRO"></strong> • Chop: <span id="summaryChop"></span>
                     </p>
                 </div>
 
@@ -397,21 +450,21 @@
     </main>
 
     <!-- ======================================================================= -->
-    <!-- MODAL: EXPORT EXCEL (SEARCH & PILIH PRO + PASSWORD RND312)              -->
+    <!-- MODAL: EXPORT EXCEL (SEARCH & PILIH PRO + PASSWORD RND)                 -->
     <!-- ======================================================================= -->
-    <div id="exportModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 max-h-[92vh] flex flex-col">
+    <div id="exportModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 safe-modal">
+        <div class="bg-white rounded-t-3xl sm:rounded-2xl max-w-xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 max-h-[90dvh] flex flex-col">
             <div class="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
                 <div class="flex items-center gap-2.5">
                     <div class="bg-emerald-100 text-emerald-700 p-2 rounded-xl">
                         <i data-lucide="file-spreadsheet" class="w-5 h-5"></i>
                     </div>
                     <div>
-                        <h3 class="font-bold text-slate-900">Export Laporan Excel (R&D Only)</h3>
+                        <h3 class="font-bold text-slate-900 text-sm sm:text-base">Export Laporan Excel (R&D Only)</h3>
                         <p class="text-xs text-slate-500">Cari & pilih nomor PRO yang ingin di-export</p>
                     </div>
                 </div>
-                <button type="button" onclick="closeModal('exportModal')" class="text-slate-400 hover:text-slate-600 p-1">
+                <button type="button" onclick="closeModal('exportModal')" class="min-h-[40px] min-w-[40px] flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-xl">
                     <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
             </div>
@@ -419,25 +472,25 @@
             <div class="py-4 space-y-4 overflow-y-auto pr-1 flex-1">
                 <div>
                     <div class="flex items-center justify-between mb-1.5">
-                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">1. Cari & Pilih PRO untuk Export *</label>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">1. Cari & Pilih PRO *</label>
                         <div class="flex items-center gap-2 text-xs">
-                            <button type="button" onclick="toggleSelectAllExport(true)" class="text-emerald-600 hover:underline font-semibold">Pilih Semua</button>
+                            <button type="button" onclick="toggleSelectAllExport(true)" class="text-emerald-600 hover:underline font-semibold py-1">Pilih Semua</button>
                             <span class="text-slate-300">|</span>
-                            <button type="button" onclick="toggleSelectAllExport(false)" class="text-slate-500 hover:underline">Reset</button>
+                            <button type="button" onclick="toggleSelectAllExport(false)" class="text-slate-500 hover:underline py-1">Reset</button>
                         </div>
                     </div>
                     <div class="relative mb-2">
                         <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
-                        <input type="text" id="exportSearchInput" oninput="renderExportTrialList()" placeholder="Ketik No. PRO, No. SO, Kode Item, atau Chop..." class="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none">
+                        <input type="text" id="exportSearchInput" oninput="renderExportTrialList()" placeholder="Ketik No. PRO, No. SO, Kode Item, atau Chop..." class="w-full min-h-[44px] pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none">
                     </div>
 
-                    <div id="exportTrialList" class="border border-slate-200 rounded-xl max-h-52 overflow-y-auto divide-y divide-slate-100 bg-slate-50"></div>
+                    <div id="exportTrialList" class="border border-slate-200 rounded-xl max-h-48 sm:max-h-52 overflow-y-auto divide-y divide-slate-100 bg-slate-50"></div>
                     <p id="exportSelectedSummary" class="text-xs font-semibold text-emerald-700 mt-1.5">0 PRO dipilih untuk export</p>
                 </div>
 
                 <div class="pt-2 border-t border-slate-100">
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">2. Password Otorisasi R&D *</label>
-                    <input type="password" id="rndPasswordInput" placeholder="Masukkan password R&D..." class="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" onkeydown="if(event.key==='Enter') verifyAndExportExcel()">
+                    <input type="password" id="rndPasswordInput" placeholder="Masukkan password R&D..." class="w-full min-h-[44px] px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" onkeydown="if(event.key==='Enter') verifyAndExportExcel()">
                     <p id="passwordErrorMsg" class="hidden text-xs text-rose-600 font-medium mt-1.5 flex items-center gap-1">
                         <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i>
                         <span>Password salah! Hanya tim R&D yang dapat mengunduh laporan Excel.</span>
@@ -446,8 +499,8 @@
             </div>
 
             <div class="pt-3 border-t border-slate-100 flex justify-end gap-2 shrink-0">
-                <button type="button" onclick="closeModal('exportModal')" class="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl">Batal</button>
-                <button type="button" id="btnConfirmExport" onclick="verifyAndExportExcel()" class="px-5 py-2 text-sm font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow flex items-center gap-2">
+                <button type="button" onclick="closeModal('exportModal')" class="min-h-[44px] px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl">Batal</button>
+                <button type="button" id="btnConfirmExport" onclick="verifyAndExportExcel()" class="min-h-[44px] px-5 py-2 text-sm font-bold bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white rounded-xl shadow flex items-center gap-2">
                     <i data-lucide="download" class="w-4 h-4"></i>
                     <span>Download .XLSX</span>
                 </button>
@@ -660,6 +713,24 @@
                 .replace(/"/g, "&quot;");
         }
 
+        // Deteksi otomatis apakah parameter cenderung angka/desimal untuk keyboard HP yang lebih cepat
+        function getSmartInputMode(paramName) {
+            const lower = String(paramName || "").toLowerCase();
+            if (
+                lower.includes("mesin") ||
+                lower.includes("chemical") ||
+                lower.includes("dyestuff") ||
+                lower.includes("nozzle") ||
+                lower.includes("pgm") ||
+                lower.includes("ratio") ||
+                lower.includes("density") ||
+                lower.includes("sesuai target")
+            ) {
+                return "text";
+            }
+            return "decimal";
+        }
+
         // -------------------------------------------------------------
         // 1. INISIALISASI & AUTENTIKASI SERVER-SIDE
         // -------------------------------------------------------------
@@ -757,10 +828,10 @@
             const roleBadge = document.getElementById("roleBadge");
             if (userRole === "RND") {
                 roleBadge.textContent = "MODE R&D";
-                roleBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-500/40 uppercase";
+                roleBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-500/40 uppercase shrink-0";
             } else {
                 roleBadge.textContent = "LAPANGAN";
-                roleBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-950 text-amber-400 border border-amber-500/40 uppercase";
+                roleBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-950 text-amber-400 border border-amber-500/40 uppercase shrink-0";
             }
             goToDashboard();
         }
@@ -785,7 +856,7 @@
             if (state === "syncing") dotClass = "bg-sky-400 animate-ping";
             else if (state === "error") dotClass = "bg-rose-400";
 
-            el.innerHTML = `<span class="w-2 h-2 rounded-full ${dotClass} inline-block"></span><span>${text}</span>`;
+            el.innerHTML = `<span class="w-2 h-2 rounded-full ${dotClass} inline-block shrink-0"></span><span class="truncate">${text}</span>`;
         }
 
         async function syncAllFromCloud(manual = false) {
@@ -872,9 +943,9 @@
                 const item = cards[key];
                 if (!item.el) return;
                 if (key === filterMode) {
-                    item.el.className = `text-left p-4 sm:p-5 rounded-2xl ${item.active} shadow-sm transition flex items-center justify-between`;
+                    item.el.className = `text-left p-3 sm:p-5 rounded-2xl ${item.active} shadow-sm transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2`;
                 } else {
-                    item.el.className = "text-left p-4 sm:p-5 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 shadow-sm transition flex items-center justify-between";
+                    item.el.className = "text-left p-3 sm:p-5 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 shadow-sm transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2";
                 }
             });
 
@@ -924,7 +995,7 @@
             const grid = document.getElementById("dashboardTrialsGrid");
             if (filtered.length === 0) {
                 grid.innerHTML = `
-                    <div class="col-span-full bg-white rounded-2xl border-2 border-dashed border-slate-200 p-10 text-center text-slate-400">
+                    <div class="col-span-full bg-white rounded-2xl border-2 border-dashed border-slate-200 p-8 sm:p-10 text-center text-slate-400">
                         <i data-lucide="folder-search" class="w-10 h-10 mx-auto mb-2.5 opacity-60"></i>
                         <p class="text-sm font-bold text-slate-600">Tidak ada data trial ditemukan</p>
                         <p class="text-xs mt-1">${query ? "Coba ubah kata kunci pencarian SO / PRO / Chop Anda." : "Klik tombol 'Buat Trial Baru' untuk memulai order trial."}</p>
@@ -960,13 +1031,13 @@
                 }
 
                 const deleteBtn = userRole === "RND"
-                    ? `<button type="button" onclick="event.stopPropagation(); deleteTrial('${trial.id}')" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition" title="Hapus Trial (R&D)">
+                    ? `<button type="button" onclick="event.stopPropagation(); deleteTrial('${trial.id}')" class="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition" title="Hapus Trial (R&D)">
                            <i data-lucide="trash-2" class="w-4 h-4"></i>
                        </button>`
                     : "";
 
                 return `
-                    <div onclick="switchToTrial('${trial.id}')" class="bg-white rounded-2xl border border-slate-200 hover:border-emerald-500 p-5 shadow-2xs hover:shadow-md transition cursor-pointer flex flex-col justify-between gap-4">
+                    <div onclick="switchToTrial('${trial.id}')" class="bg-white rounded-2xl border border-slate-200 hover:border-emerald-500 active:scale-[0.99] p-4 sm:p-5 shadow-2xs hover:shadow-md transition cursor-pointer flex flex-col justify-between gap-3.5 sm:gap-4">
                         <div class="space-y-2.5">
                             <div class="flex items-start justify-between gap-2">
                                 <div class="flex flex-wrap items-center gap-2">
@@ -977,22 +1048,22 @@
                             </div>
 
                             <div>
-                                <h3 class="font-extrabold text-base text-slate-900 leading-snug">
+                                <h3 class="font-extrabold text-sm sm:text-base text-slate-900 leading-snug break-words">
                                     ${escapeHtml(id.item || "Order Baru")} <span class="text-emerald-700">• ${escapeHtml(id.colour || "-")}</span>
                                 </h3>
                                 <p class="text-xs text-slate-500 line-clamp-1 mt-0.5">${escapeHtml(id.purpose || "-")}</p>
                             </div>
 
                             <div class="grid grid-cols-3 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 text-xs font-mono-code">
-                                <div>
+                                <div class="min-w-0">
                                     <span class="text-[10px] text-slate-400 block font-sans">NO. SO</span>
                                     <strong class="text-slate-800 truncate block">${escapeHtml(id.so || "-")}</strong>
                                 </div>
-                                <div>
+                                <div class="min-w-0">
                                     <span class="text-[10px] text-slate-400 block font-sans">NO. PRO</span>
                                     <strong class="text-slate-800 truncate block">${escapeHtml(id.pro || "-")}</strong>
                                 </div>
-                                <div>
+                                <div class="min-w-0">
                                     <span class="text-[10px] text-slate-400 block font-sans">CHOP</span>
                                     <strong class="text-slate-800 truncate block">${escapeHtml(id.chop || "-")}</strong>
                                 </div>
@@ -1000,9 +1071,9 @@
                         </div>
 
                         <div class="space-y-2 pt-2 border-t border-slate-100">
-                            <div class="flex items-center justify-between text-xs">
-                                <span class="font-semibold ${finished ? "text-emerald-700" : "text-amber-700"}">${escapeHtml(nextLabel)}</span>
-                                <span class="font-bold text-slate-600">${done}/${total} Tahap</span>
+                            <div class="flex items-center justify-between text-xs gap-2">
+                                <span class="font-semibold truncate ${finished ? "text-emerald-700" : "text-amber-700"}">${escapeHtml(nextLabel)}</span>
+                                <span class="font-bold text-slate-600 shrink-0">${done}/${total} Tahap</span>
                             </div>
                             <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                                 <div class="h-full ${finished ? "bg-emerald-500" : "bg-amber-500"} rounded-full transition-all" style="width: ${pct}%"></div>
@@ -1130,13 +1201,13 @@
                 const nav = document.getElementById("stepNav" + n);
                 const badge = document.getElementById("stepBadge" + n);
                 if (n === stepNum) {
-                    nav.className = "flex items-center gap-2 font-bold text-emerald-400 whitespace-nowrap";
+                    nav.className = "min-h-[34px] flex items-center gap-1.5 sm:gap-2 font-bold text-emerald-400 whitespace-nowrap";
                     badge.className = "w-6 h-6 rounded-full bg-emerald-500 text-slate-950 font-bold flex items-center justify-center text-xs";
                 } else if (n < stepNum) {
-                    nav.className = "flex items-center gap-2 font-semibold text-slate-200 whitespace-nowrap";
+                    nav.className = "min-h-[34px] flex items-center gap-1.5 sm:gap-2 font-semibold text-slate-200 whitespace-nowrap";
                     badge.className = "w-6 h-6 rounded-full bg-emerald-600/40 text-emerald-300 font-bold flex items-center justify-center text-xs";
                 } else {
-                    nav.className = "flex items-center gap-2 font-medium text-slate-400 whitespace-nowrap";
+                    nav.className = "min-h-[34px] flex items-center gap-1.5 sm:gap-2 font-medium text-slate-400 whitespace-nowrap";
                     badge.className = "w-6 h-6 rounded-full bg-slate-700 text-slate-300 font-bold flex items-center justify-center text-xs";
                 }
             });
@@ -1171,7 +1242,7 @@
             document.getElementById("id_colour").value = "C#STONE";
             document.getElementById("id_so").value = "2140014746";
             document.getElementById("id_pro").value = "310027375 | 310027376";
-            document.getElementById("id_pic").value = "Andi (R&D)";
+            document.getElementById("id_pic").value = "Nisa (R&D)";
             document.getElementById("id_chop").value = "CH-8892";
             document.getElementById("id_chop_greige").value = "GR-4410";
             document.getElementById("id_std_ref").value = "310027209";
@@ -1211,11 +1282,11 @@
             container.innerHTML = STANDARD_PROCESSES.map((proc, idx) => {
                 const isQc = proc.type === "qc";
                 const btnStyle = isQc
-                    ? "px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-600 hover:text-white text-purple-800 border border-purple-300 text-xs font-bold transition shadow-xs flex items-center gap-1.5"
-                    : "px-3 py-1.5 rounded-xl bg-white hover:bg-emerald-600 hover:text-white text-slate-700 border border-slate-300 text-xs font-semibold transition shadow-xs flex items-center gap-1.5";
+                    ? "min-h-[38px] px-3 py-2 rounded-xl bg-purple-50 hover:bg-purple-600 hover:text-white active:scale-95 text-purple-800 border border-purple-300 text-xs font-bold transition shadow-xs flex items-center gap-1.5"
+                    : "min-h-[38px] px-3 py-2 rounded-xl bg-white hover:bg-emerald-600 hover:text-white active:scale-95 text-slate-700 border border-slate-300 text-xs font-semibold transition shadow-xs flex items-center gap-1.5";
                 return `
                     <button type="button" onclick="addPresetProcess(${idx})" class="${btnStyle}">
-                        <i data-lucide="${isQc ? "check-square" : "plus-circle"}" class="w-3.5 h-3.5"></i>
+                        <i data-lucide="${isQc ? "check-square" : "plus-circle"}" class="w-3.5 h-3.5 shrink-0"></i>
                         <span>${proc.name}</span>
                     </button>
                 `;
@@ -1329,7 +1400,6 @@
             const step = currentTrial.steps[stepIdx];
             if (!step) return;
 
-            // Sisipkan parameter mesin baru sebelum kelompok hasil uji kain wajib (Lebar, g/yd, gsm, Density)
             const firstFabricIdx = step.parameters.findIndex(p => p.category === "fabric_outcome");
             const newParamObj = {
                 name: paramName,
@@ -1383,19 +1453,19 @@
                     : `${step.parameters.length} Parameter (Termasuk Hasil Lebar, g/yd, gsm, & Density)`;
 
                 const stdInputsHtml = isQc
-                    ? `<div class="text-xs text-purple-700 bg-purple-50 p-2.5 rounded-lg border border-purple-200">
+                    ? `<div class="text-xs text-purple-700 bg-purple-50 p-3 rounded-lg border border-purple-200">
                            Tahap ini akan menampilkan pilihan tombol <strong>OK</strong> atau <strong>FAILED</strong> beserta kolom Note QC.
                        </div>`
                     : `<div class="space-y-3">
                            <div class="flex flex-col sm:flex-row gap-2 bg-sky-50/80 p-2.5 rounded-xl border border-sky-200/80">
-                               <input type="text" id="new_param_name_${sIdx}" placeholder="Nama parameter baru (misal: Tekanan Roller / pH)..."
+                               <input type="text" id="new_param_name_${sIdx}" placeholder="Nama parameter baru..."
                                    onkeydown="if(event.key==='Enter'){event.preventDefault(); addParameterToRoutingStep(${sIdx});}"
-                                   class="flex-1 px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 bg-white focus:ring-1 focus:ring-emerald-500 outline-none">
+                                   class="flex-1 min-h-[40px] px-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-white focus:ring-1 focus:ring-emerald-500 outline-none">
                                <input type="text" id="new_param_std_${sIdx}" placeholder="STD (opsional)"
                                    onkeydown="if(event.key==='Enter'){event.preventDefault(); addParameterToRoutingStep(${sIdx});}"
-                                   class="sm:w-28 px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 bg-white font-mono-code focus:ring-1 focus:ring-emerald-500 outline-none">
+                                   class="sm:w-32 min-h-[40px] px-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-white font-mono-code focus:ring-1 focus:ring-emerald-500 outline-none">
                                <button type="button" onclick="addParameterToRoutingStep(${sIdx})"
-                                   class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold flex items-center justify-center gap-1 whitespace-nowrap">
+                                   class="min-h-[40px] px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-white text-xs font-semibold flex items-center justify-center gap-1 whitespace-nowrap">
                                    <i data-lucide="plus" class="w-3.5 h-3.5"></i>
                                    <span>Tambah Parameter</span>
                                </button>
@@ -1404,14 +1474,14 @@
                                ${step.parameters.map((p, pIdx) => {
                                    const isMandatoryFabric = p.category === "fabric_outcome";
                                    return `
-                                       <div class="flex items-center justify-between gap-1.5 ${isMandatoryFabric ? "bg-sky-50/60 border-sky-200" : "bg-slate-50 border-slate-200/70"} px-2.5 py-1.5 rounded-lg border">
+                                       <div class="flex items-center justify-between gap-2 ${isMandatoryFabric ? "bg-sky-50/60 border-sky-200" : "bg-slate-50 border-slate-200/70"} px-2.5 py-2 rounded-lg border">
                                            <span class="text-xs text-slate-700 font-medium truncate flex-1" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</span>
                                            <input type="text" value="${escapeHtml(p.stdValue || "")}" placeholder="STD..."
                                                onchange="updateRoutingStdValue(${sIdx}, ${pIdx}, this.value)"
-                                               class="w-16 px-2 py-1 text-xs rounded border border-slate-300 bg-white font-mono-code focus:ring-1 focus:ring-emerald-500 outline-none">
+                                               class="w-20 min-h-[36px] px-2 py-1 text-xs rounded border border-slate-300 bg-white font-mono-code focus:ring-1 focus:ring-emerald-500 outline-none">
                                            ${!isMandatoryFabric ? `
-                                               <button type="button" onclick="removeParameterFromRoutingStep(${sIdx}, ${pIdx})" class="text-slate-400 hover:text-rose-600 p-0.5" title="Hapus parameter ini">
-                                                   <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                                               <button type="button" onclick="removeParameterFromRoutingStep(${sIdx}, ${pIdx})" class="min-h-[34px] min-w-[30px] flex items-center justify-center text-slate-400 hover:text-rose-600" title="Hapus parameter ini">
+                                                   <i data-lucide="x" class="w-4 h-4"></i>
                                                </button>
                                            ` : ""}
                                        </div>
@@ -1423,30 +1493,30 @@
                 return `
                     <div class="bg-white border ${isQc ? "border-purple-200" : "border-slate-200"} rounded-xl p-3.5 shadow-2xs">
                         <div class="flex items-center justify-between gap-2">
-                            <div class="flex items-center gap-3">
+                            <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
                                 <span class="w-7 h-7 rounded-lg ${isQc ? "bg-purple-700" : "bg-slate-900"} text-white font-bold text-xs flex items-center justify-center shrink-0">
                                     ${sIdx + 1}
                                 </span>
-                                <div>
-                                    <h4 class="font-bold text-sm text-slate-900">${step.name}</h4>
-                                    <p class="text-xs text-slate-500">${subtitle}</p>
+                                <div class="min-w-0">
+                                    <h4 class="font-bold text-sm text-slate-900 truncate">${step.name}</h4>
+                                    <p class="text-xs text-slate-500 truncate">${subtitle}</p>
                                 </div>
                             </div>
-                            <div class="flex items-center gap-1">
-                                <button type="button" onclick="moveRoutingStep(${sIdx}, -1)" ${sIdx === 0 ? "disabled" : ""} class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 disabled:opacity-30" title="Geser Naik">
+                            <div class="flex items-center gap-0.5 shrink-0">
+                                <button type="button" onclick="moveRoutingStep(${sIdx}, -1)" ${sIdx === 0 ? "disabled" : ""} class="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-600 disabled:opacity-30" title="Geser Naik">
                                     <i data-lucide="chevron-up" class="w-4 h-4"></i>
                                 </button>
-                                <button type="button" onclick="moveRoutingStep(${sIdx}, 1)" ${sIdx === currentTrial.steps.length - 1 ? "disabled" : ""} class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 disabled:opacity-30" title="Geser Turun">
+                                <button type="button" onclick="moveRoutingStep(${sIdx}, 1)" ${sIdx === currentTrial.steps.length - 1 ? "disabled" : ""} class="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-600 disabled:opacity-30" title="Geser Turun">
                                     <i data-lucide="chevron-down" class="w-4 h-4"></i>
                                 </button>
-                                <button type="button" onclick="removeRoutingStep(${sIdx})" class="p-1.5 rounded-lg hover:bg-rose-50 text-rose-600 ml-1" title="Hapus">
+                                <button type="button" onclick="removeRoutingStep(${sIdx})" class="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-lg hover:bg-rose-50 text-rose-600 ml-0.5" title="Hapus">
                                     <i data-lucide="trash-2" class="w-4 h-4"></i>
                                 </button>
                             </div>
                         </div>
 
                         <details open class="mt-2.5 pt-2.5 border-t border-slate-100">
-                            <summary class="text-xs font-semibold text-sky-700 cursor-pointer hover:underline select-none">
+                            <summary class="text-xs font-semibold text-sky-700 cursor-pointer hover:underline select-none py-1">
                                 ${isQc ? "Detail Format QC" : "Atur Parameter Mesin & Nilai STD Kartu"}
                             </summary>
                             <div class="mt-2.5">${stdInputsHtml}</div>
@@ -1493,7 +1563,7 @@
             const completedCount = currentTrial.steps.filter(s => s.status === "completed").length;
             const pct = total > 0 ? Math.round((completedCount / total) * 100) : 0;
 
-            document.getElementById("progressText").textContent = `${completedCount}/${total} Proses Selesai (${pct}%)`;
+            document.getElementById("progressText").textContent = `${completedCount}/${total} Selesai (${pct}%)`;
             document.getElementById("progressBarFill").style.width = `${pct}%`;
 
             const overallBadge = document.getElementById("trialOverallBadge");
@@ -1550,7 +1620,7 @@
                         : "bg-slate-50 border-slate-200/80 text-slate-800";
                     return `
                         <div class="${highlight} px-2.5 py-1.5 rounded-lg border text-xs">
-                            <span class="text-slate-500 block text-[10px]">${escapeHtml(p.name)}</span>
+                            <span class="text-slate-500 block text-[10px] truncate">${escapeHtml(p.name)}</span>
                             <span class="font-bold font-mono-code">${escapeHtml(val)}</span>
                         </div>
                     `;
@@ -1564,8 +1634,8 @@
             }
 
             const editButtonHtml = userRole === "RND"
-                ? `<button type="button" onclick="reopenCompletedStep(${sIdx})" class="text-xs font-semibold text-slate-500 hover:text-slate-800 underline">
-                       Edit Data (R&D)
+                ? `<button type="button" onclick="reopenCompletedStep(${sIdx})" class="min-h-[36px] px-2.5 text-xs font-semibold text-slate-600 hover:text-slate-900 underline">
+                       Edit (R&D)
                    </button>`
                 : "";
 
@@ -1577,23 +1647,23 @@
                     </div>
 
                     <div class="bg-white rounded-2xl border border-emerald-200/90 shadow-2xs overflow-hidden">
-                        <div class="px-4 py-3.5 bg-emerald-50/70 border-b border-emerald-100 flex flex-wrap items-center justify-between gap-2">
+                        <div class="px-3.5 sm:px-4 py-3.5 bg-emerald-50/70 border-b border-emerald-100 flex flex-wrap items-center justify-between gap-2">
                             <div class="flex items-center gap-2.5">
-                                <span class="sm:hidden w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">✓</span>
+                                <span class="sm:hidden w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center shrink-0">✓</span>
                                 <div>
-                                    <div class="flex items-center gap-2">
+                                    <div class="flex flex-wrap items-center gap-2">
                                         <h3 class="font-bold text-slate-900 text-sm sm:text-base">${sIdx + 1}. ${escapeHtml(step.name)}</h3>
-                                        <span class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-600 text-white">SELESAI</span>
+                                        <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-600 text-white">SELESAI</span>
                                     </div>
                                     <p class="text-xs text-slate-600 mt-0.5">
-                                        Petugas: <strong>${escapeHtml(step.operatorName)}</strong> • Selesai: <span class="font-mono-code">${escapeHtml(step.completedAt)}</span>
+                                        Petugas: <strong>${escapeHtml(step.operatorName)}</strong> • <span class="font-mono-code">${escapeHtml(step.completedAt)}</span>
                                     </p>
                                 </div>
                             </div>
                             ${editButtonHtml}
                         </div>
 
-                        <div class="p-4">
+                        <div class="p-3.5 sm:p-4">
                             ${bodySummaryHtml}
                         </div>
                     </div>
@@ -1624,7 +1694,7 @@
                         <div class="bg-white rounded-2xl border-2 border-purple-500 shadow-lg overflow-hidden">
                             <div class="px-4 sm:px-6 py-4 bg-purple-50 border-b border-purple-200/80 flex flex-wrap items-center justify-between gap-2">
                                 <div class="flex items-center gap-3">
-                                    <span class="sm:hidden w-7 h-7 rounded-full bg-purple-600 text-white text-xs font-extrabold flex items-center justify-center">${sIdx + 1}</span>
+                                    <span class="sm:hidden w-7 h-7 rounded-full bg-purple-600 text-white text-xs font-extrabold flex items-center justify-center shrink-0">${sIdx + 1}</span>
                                     <div>
                                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-purple-600 text-white uppercase tracking-wider mb-1">
                                             ● Tahap QC Aktif Saat Ini
@@ -1633,7 +1703,7 @@
                                     </div>
                                 </div>
                                 <span class="text-xs font-semibold text-purple-900 bg-purple-200/60 px-3 py-1 rounded-full">
-                                    Wajib pilih OK / FAILED & isi Note
+                                    Wajib pilih OK / FAILED
                                 </span>
                             </div>
 
@@ -1644,43 +1714,43 @@
                                     </label>
                                     <div class="grid grid-cols-2 gap-3">
                                         <button type="button" onclick="setQcDecision(${sIdx}, 'OK')"
-                                            class="py-3.5 px-4 rounded-xl border-2 font-extrabold text-sm flex items-center justify-center gap-2 transition ${isOk ? "border-emerald-600 bg-emerald-600 text-white shadow-md" : "border-slate-200 bg-slate-50 text-slate-700 hover:border-emerald-400"}">
-                                            <i data-lucide="check-circle" class="w-5 h-5"></i>
+                                            class="min-h-[52px] py-3.5 px-3 sm:px-4 rounded-xl border-2 font-extrabold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition ${isOk ? "border-emerald-600 bg-emerald-600 text-white shadow-md" : "border-slate-200 bg-slate-50 text-slate-700 hover:border-emerald-400"}">
+                                            <i data-lucide="check-circle" class="w-5 h-5 shrink-0"></i>
                                             <span>OK (PASS)</span>
                                         </button>
                                         <button type="button" onclick="setQcDecision(${sIdx}, 'FAILED')"
-                                            class="py-3.5 px-4 rounded-xl border-2 font-extrabold text-sm flex items-center justify-center gap-2 transition ${isFailed ? "border-rose-600 bg-rose-600 text-white shadow-md" : "border-slate-200 bg-slate-50 text-slate-700 hover:border-rose-400"}">
-                                            <i data-lucide="x-circle" class="w-5 h-5"></i>
-                                            <span>FAILED (REJECT)</span>
+                                            class="min-h-[52px] py-3.5 px-3 sm:px-4 rounded-xl border-2 font-extrabold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition ${isFailed ? "border-rose-600 bg-rose-600 text-white shadow-md" : "border-slate-200 bg-slate-50 text-slate-700 hover:border-rose-400"}">
+                                            <i data-lucide="x-circle" class="w-5 h-5 shrink-0"></i>
+                                            <span>FAILED</span>
                                         </button>
                                     </div>
                                 </div>
 
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                                     <div>
-                                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                                             Note / Catatan Hasil QC <span class="text-rose-500">*</span>
                                         </label>
                                         <input type="text" id="notes_input_${sIdx}" value="${escapeHtml(step.notes || "")}"
                                             oninput="updateStepMeta(${sIdx}, 'notes', this.value)"
-                                            placeholder="Contoh: Warna sesuai standar, tidak ada cacat / belang"
-                                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+                                            placeholder="Contoh: Warna sesuai standar, tidak cacat"
+                                            class="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-purple-500 outline-none">
                                     </div>
                                     <div>
-                                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                                             Nama Petugas QC <span class="text-rose-500">*</span>
                                         </label>
                                         <input type="text" id="operator_input_${sIdx}" value="${escapeHtml(step.operatorName || "")}"
                                             oninput="updateStepMeta(${sIdx}, 'operatorName', this.value)"
                                             placeholder="Masukkan nama petugas QC..."
-                                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+                                            class="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-purple-500 outline-none">
                                     </div>
                                 </div>
 
                                 <div class="pt-2">
                                     <button type="button" id="completeBtn_${sIdx}" onclick="completeProcessStep(${sIdx})"
-                                        class="w-full py-4 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-extrabold text-sm sm:text-base shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-2.5">
-                                        <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+                                        class="w-full min-h-[52px] py-4 px-5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-extrabold text-sm sm:text-base shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-2.5">
+                                        <i data-lucide="check-circle-2" class="w-6 h-6 shrink-0"></i>
                                         <span>SELESAI ${escapeHtml(step.name)} & SIMPAN</span>
                                     </button>
                                 </div>
@@ -1695,26 +1765,28 @@
 
             const renderParamBox = (p, accentRing) => {
                 const pIdx = p.origIdx;
+                const inputMode = getSmartInputMode(p.name);
                 const stdBadge = p.stdValue
                     ? `<span class="text-[11px] font-mono-code bg-sky-100 text-sky-800 px-2 py-0.5 rounded font-semibold">STD: ${escapeHtml(p.stdValue)}</span>`
                     : "";
                 return `
                     <div class="p-3 rounded-xl border ${p.isNA ? "bg-slate-100 border-slate-200" : "bg-white border-slate-200"} transition">
                         <div class="flex items-center justify-between gap-2 mb-1.5">
-                            <label class="text-xs font-bold text-slate-800">${escapeHtml(p.name)} <span class="text-rose-500">*</span></label>
-                            <label class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 cursor-pointer select-none">
-                                <input type="checkbox" ${p.isNA ? "checked" : ""} onchange="toggleParamNA(${sIdx}, ${pIdx}, this.checked)" class="rounded text-emerald-600 focus:ring-0">
+                            <label class="text-xs font-bold text-slate-800 leading-tight">${escapeHtml(p.name)} <span class="text-rose-500">*</span></label>
+                            <label class="touch-target inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 cursor-pointer select-none py-1 px-1.5 rounded-lg hover:bg-slate-100">
+                                <input type="checkbox" ${p.isNA ? "checked" : ""} onchange="toggleParamNA(${sIdx}, ${pIdx}, this.checked)" class="w-4 h-4 rounded text-emerald-600 focus:ring-0">
                                 <span>N/A</span>
                             </label>
                         </div>
                         ${stdBadge ? `<div class="mb-1.5">${stdBadge}</div>` : ""}
                         <input type="text"
+                            inputmode="${inputMode}"
                             id="param_input_${sIdx}_${pIdx}"
                             value="${p.isNA ? "N/A" : escapeHtml(p.actualValue || "")}"
                             ${p.isNA ? "disabled" : ""}
                             oninput="updateActualParamValue(${sIdx}, ${pIdx}, this.value)"
                             placeholder="${p.isNA ? "Tidak diukur (N/A)" : "Isi hasil aktual..."}"
-                            class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm font-mono-code focus:ring-2 ${accentRing} outline-none disabled:bg-slate-200/70 disabled:text-slate-500">
+                            class="w-full min-h-[44px] px-3 py-2 rounded-lg border border-slate-300 text-sm font-mono-code focus:ring-2 ${accentRing} outline-none disabled:bg-slate-200/70 disabled:text-slate-500">
                     </div>
                 `;
             };
@@ -1729,7 +1801,7 @@
                     <div class="bg-white rounded-2xl border-2 border-amber-400 shadow-lg overflow-hidden">
                         <div class="px-4 sm:px-6 py-4 bg-amber-50 border-b border-amber-200/80 flex flex-wrap items-center justify-between gap-2">
                             <div class="flex items-center gap-3">
-                                <span class="sm:hidden w-7 h-7 rounded-full bg-amber-500 text-white text-xs font-extrabold flex items-center justify-center">${sIdx + 1}</span>
+                                <span class="sm:hidden w-7 h-7 rounded-full bg-amber-500 text-white text-xs font-extrabold flex items-center justify-center shrink-0">${sIdx + 1}</span>
                                 <div>
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-500 text-white uppercase tracking-wider mb-1">
                                         ● Proses Aktif Saat Ini
@@ -1742,49 +1814,49 @@
                             </span>
                         </div>
 
-                        <div class="p-4 sm:p-6 space-y-6">
+                        <div class="p-4 sm:p-6 space-y-5 sm:space-y-6">
                             <div>
                                 <h4 class="text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                                    <i data-lucide="sliders" class="w-4 h-4 text-amber-600"></i>
+                                    <i data-lucide="sliders" class="w-4 h-4 text-amber-600 shrink-0"></i>
                                     <span>1. Parameter Kondisi Mesin (${escapeHtml(step.name)})</span>
                                 </h4>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                     ${machineParams.map(p => renderParamBox(p, "focus:ring-amber-500 focus:border-amber-500")).join("")}
                                 </div>
                             </div>
 
-                            <div class="bg-sky-50/70 p-4 rounded-2xl border border-sky-200">
+                            <div class="bg-sky-50/70 p-3.5 sm:p-4 rounded-2xl border border-sky-200">
                                 <h4 class="text-xs font-extrabold text-sky-900 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                                    <i data-lucide="ruler" class="w-4 h-4 text-sky-600"></i>
-                                    <span>2. Hasil Uji Kain Setelah ${escapeHtml(step.name)} (Lebar, g/yd, GSM, Density)</span>
+                                    <i data-lucide="ruler" class="w-4 h-4 text-sky-600 shrink-0"></i>
+                                    <span>2. Hasil Uji Kain Setelah ${escapeHtml(step.name)}</span>
                                 </h4>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                     ${fabricParams.map(p => renderParamBox(p, "focus:ring-sky-500 focus:border-sky-500")).join("")}
                                 </div>
                             </div>
 
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-100">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-3 border-t border-slate-100">
                                 <div>
-                                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Kondisi Kain / Catatan Lapangan</label>
+                                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Kondisi Kain / Catatan Lapangan</label>
                                     <input type="text" id="notes_input_${sIdx}" value="${escapeHtml(step.notes || "")}"
                                         oninput="updateStepMeta(${sIdx}, 'notes', this.value)"
                                         placeholder="Contoh: Kain normal, tidak ada lipatan / belang"
-                                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                                        class="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-amber-500 outline-none">
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Operator Pelaksana <span class="text-rose-500">*</span></label>
+                                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Nama Operator Pelaksana <span class="text-rose-500">*</span></label>
                                     <input type="text" id="operator_input_${sIdx}" value="${escapeHtml(step.operatorName || "")}"
                                         oninput="updateStepMeta(${sIdx}, 'operatorName', this.value)"
                                         placeholder="Masukkan nama operator..."
-                                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                                        class="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-amber-500 outline-none">
                                 </div>
                             </div>
 
                             <div class="pt-2">
                                 <button type="button" id="completeBtn_${sIdx}" onclick="completeProcessStep(${sIdx})"
-                                    class="w-full py-4 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-extrabold text-sm sm:text-base shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-2.5">
-                                    <i data-lucide="check-circle-2" class="w-6 h-6"></i>
-                                    <span>SELESAI PROSES ${escapeHtml(step.name)} & SIMPAN</span>
+                                    class="w-full min-h-[52px] py-4 px-5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-extrabold text-sm sm:text-base shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-2.5">
+                                    <i data-lucide="check-circle-2" class="w-6 h-6 shrink-0"></i>
+                                    <span>SELESAI ${escapeHtml(step.name)} & SIMPAN</span>
                                 </button>
                             </div>
                         </div>
@@ -1800,15 +1872,15 @@
                     <div class="hidden sm:flex absolute left-1.5 top-3 w-9 h-9 rounded-full bg-slate-200 text-slate-500 font-bold text-xs items-center justify-center z-10">
                         <i data-lucide="lock" class="w-4 h-4"></i>
                     </div>
-                    <div class="bg-slate-50 rounded-2xl border border-slate-200 px-4 py-3.5 flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <span class="sm:hidden w-6 h-6 rounded-full bg-slate-200 text-slate-500 text-xs font-bold flex items-center justify-center">${sIdx + 1}</span>
-                            <div>
-                                <h4 class="font-bold text-slate-600 text-sm">${sIdx + 1}. ${escapeHtml(step.name)}</h4>
-                                <p class="text-xs text-slate-400">Menunggu proses sebelumnya selesai</p>
+                    <div class="bg-slate-50 rounded-2xl border border-slate-200 px-3.5 sm:px-4 py-3.5 flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                            <span class="sm:hidden w-6 h-6 rounded-full bg-slate-200 text-slate-500 text-xs font-bold flex items-center justify-center shrink-0">${sIdx + 1}</span>
+                            <div class="min-w-0">
+                                <h4 class="font-bold text-slate-600 text-sm truncate">${sIdx + 1}. ${escapeHtml(step.name)}</h4>
+                                <p class="text-xs text-slate-400 truncate">Menunggu proses sebelumnya selesai</p>
                             </div>
                         </div>
-                        <span class="text-xs font-semibold text-slate-400 bg-slate-200/70 px-2.5 py-1 rounded-lg">Terkunci</span>
+                        <span class="text-xs font-semibold text-slate-400 bg-slate-200/70 px-2.5 py-1 rounded-lg shrink-0">Terkunci</span>
                     </div>
                 </div>
             `;
@@ -1883,7 +1955,7 @@
             const btn = document.getElementById(`completeBtn_${stepIndex}`);
             if (btn) {
                 btn.disabled = true;
-                btn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i><span>Menyimpan & Sinkronisasi ke Server...</span>`;
+                btn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i><span>Menyimpan & Sinkronisasi...</span>`;
                 refreshIcons();
             }
 
@@ -1987,12 +2059,12 @@
                     const doneCount = t.steps.filter(s => s.status === "completed").length;
                     const isFinished = t.steps.length > 0 && doneCount === t.steps.length;
                     return `
-                        <label class="flex items-start gap-3 p-3 hover:bg-white cursor-pointer transition select-none ${isChecked ? "bg-emerald-50/60" : ""}">
-                            <input type="checkbox" ${isChecked ? "checked" : ""} onchange="toggleExportTrialSelection('${t.id}')" class="mt-1 rounded text-emerald-600 focus:ring-emerald-500">
+                        <label class="touch-target flex items-start gap-3 p-3.5 hover:bg-white cursor-pointer transition select-none ${isChecked ? "bg-emerald-50/60" : ""}">
+                            <input type="checkbox" ${isChecked ? "checked" : ""} onchange="toggleExportTrialSelection('${t.id}')" class="w-4 h-4 mt-1 rounded text-emerald-600 focus:ring-emerald-500">
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center justify-between gap-2">
                                     <span class="font-bold text-xs text-slate-900 truncate">PRO: ${escapeHtml(id.pro || "-")}</span>
-                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${isFinished ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}">
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${isFinished ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}">
                                         ${doneCount}/${t.steps.length} Proses
                                     </span>
                                 </div>
